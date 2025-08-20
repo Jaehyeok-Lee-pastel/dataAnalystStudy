@@ -1,0 +1,3411 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>영화는 왜 성공할까? - TMDB 데이터 분석</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            overflow: auto;
+            color: #333;
+        }
+
+        .presentation-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
+        .slide {
+            width: 100%;
+            height: 100%;
+            display: none;
+            padding: 40px 60px;
+            position: absolute;
+            top: 0;
+            left: 0;
+            background: white;
+            overflow-y: auto;
+        }
+
+        .slide.active {
+            display: flex;
+            flex-direction: column;
+            animation: slideIn 0.6s ease-out;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(50px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        /* Title Slide */
+        .title-slide {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-align: center;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .title-slide h1 {
+            font-size: 4rem;
+            margin-bottom: 2rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            font-weight: 700;
+        }
+
+        .title-slide h2 {
+            font-size: 2.5rem;
+            margin-bottom: 1.5rem;
+            opacity: 0.9;
+            font-weight: 300;
+        }
+
+        .title-slide p {
+            font-size: 1.8rem;
+            opacity: 0.8;
+            margin-bottom: 3rem;
+        }
+
+        .title-stats {
+            display: flex;
+            justify-content: center;
+            gap: 4rem;
+            margin-top: 3rem;
+        }
+
+        .title-stat {
+            background: rgba(255,255,255,0.15);
+            padding: 1.5rem 2rem;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+        }
+
+        .title-stat h3 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .title-stat p {
+            font-size: 1.1rem;
+            margin: 0;
+        }
+
+        /* Regular Slides */
+        .slide h1 {
+            font-size: 2.8rem;
+            color: #2c3e50;
+            margin-bottom: 2rem;
+            text-align: center;
+            border-bottom: 4px solid #667eea;
+            padding-bottom: 1rem;
+        }
+
+        .slide h2 {
+            font-size: 2rem;
+            color: #34495e;
+            margin-bottom: 1.5rem;
+        }
+
+        .slide h3 {
+            font-size: 1.6rem;
+            color: white;
+            margin-bottom: 1rem;
+        }
+
+        .slide h4 {
+            font-size: 1.3rem;
+            color: #555;
+            margin-bottom: 0.8rem;
+        }
+
+        .slide p, .slide li {
+            font-size: 1.2rem;
+            line-height: 1.6;
+            margin-bottom: 1rem;
+        }
+
+        .slide ul {
+            margin-left: 2rem;
+            margin-bottom: 1.5rem;
+        }
+
+        /* Key Stats Grid */
+        .key-stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 2rem;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            transition: transform 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-card h3 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            color: white;
+        }
+
+        .stat-card p {
+            font-size: 1rem;
+            opacity: 0.9;
+            margin: 0;
+        }
+
+        /* Two Column Layout */
+        .two-column {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3rem;
+            margin-top: 2rem;
+        }
+
+        /* Three Column Layout */
+        .three-column {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+
+        /* Highlight Box */
+        .highlight-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            border-radius: 15px;
+            margin: 2rem 0;
+            text-align: center;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.2);
+        }
+
+        .highlight-box h3 {
+            color: white;
+            margin-bottom: 1rem;
+            font-size: 1.8rem;
+        }
+
+        .highlight-box p {
+            font-size: 1.2rem;
+            opacity: 0.95;
+            margin: 0;
+        }
+
+        /* Feature Card */
+        .feature-card {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 12px;
+            border-left: 5px solid #667eea;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .feature-card h4 {
+            color: #667eea;
+            margin-bottom: 0.8rem;
+        }
+
+        .feature-card p {
+            color: #555;
+            font-size: 1.1rem;
+            margin: 0;
+        }
+
+        /* Analysis Grid */
+        .analysis-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 3rem;
+            margin: 2rem 0;
+        }
+
+        /* Data Table */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        .data-table th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-weight: 600;
+        }
+
+        .data-table tr:hover {
+            background: #f8f9ff;
+        }
+
+        /* Process Flow */
+        .process-flow {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 2rem 0;
+            padding: 2rem;
+            background: #f8f9fa;
+            border-radius: 15px;
+        }
+
+        .process-step {
+            text-align: center;
+            flex: 1;
+            position: relative;
+        }
+
+        .process-step:not(:last-child)::after {
+            content: '→';
+            position: absolute;
+            right: -1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 2rem;
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .process-step h4 {
+            background: #667eea;
+            color: white;
+            padding: 1rem;
+            border-radius: 50%;
+            width: 3rem;
+            height: 3rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+            font-size: 1.2rem;
+        }
+
+        .process-step p {
+            font-size: 1.1rem;
+            margin: 0;
+        }
+
+        /* Chart Container */
+        .chart-container {
+            background: #f8f9fa;
+            border: 2px dashed #667eea;
+            border-radius: 12px;
+            padding: 2rem;
+            text-align: center;
+            margin: 1.5rem 0;
+            color: #667eea;
+        }
+
+        .chart-container h4 {
+            font-size: 1.4rem;
+            margin-bottom: 1rem;
+            color: #667eea;
+        }
+
+        .chart-container p {
+            font-size: 1rem;
+            line-height: 1.5;
+            margin: 0;
+        }
+
+        /* Grade System */
+        .grade-system {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+
+        .grade-card {
+            text-align: center;
+            padding: 1.5rem;
+            border-radius: 12px;
+            color: white;
+            font-weight: bold;
+        }
+
+        .grade-card.low {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+        }
+
+        .grade-card.normal {
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+        }
+
+        .grade-card.success {
+            background: linear-gradient(135deg, #27ae60, #229954);
+        }
+
+        .grade-card.excellent {
+            background: linear-gradient(135deg, #8e44ad, #7d3c98);
+        }
+
+        .grade-card h4 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+            color: white;
+        }
+
+        .grade-card p {
+            font-size: 0.9rem;
+            margin: 0;
+            opacity: 0.9;
+        }
+
+        /* Navigation */
+        .navigation {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            display: flex;
+            gap: 15px;
+            z-index: 1000;
+        }
+
+        .nav-btn {
+            padding: 15px 25px;
+            background: rgba(102, 126, 234, 0.9);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            font-weight: 600;
+            transition: all 0.3s;
+            backdrop-filter: blur(10px);
+        }
+
+        .nav-btn:hover {
+            background: rgba(102, 126, 234, 1);
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+
+        .nav-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Slide Counter */
+        .slide-counter {
+            position: fixed;
+            bottom: 30px;
+            left: 30px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 25px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+        }
+
+        /* Progress Bar */
+        .progress-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 5px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transition: width 0.3s;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(102, 126, 234, 0.3);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .slide {
+                padding: 20px 15px;
+            }
+            
+            .title-slide h1 {
+                font-size: 2.5rem;
+            }
+            
+            .title-slide h2 {
+                font-size: 1.8rem;
+            }
+            
+            .title-stats {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            
+            .two-column, .three-column {
+                grid-template-columns: 1fr;
+                gap: 1.5rem;
+            }
+
+            .key-stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .grade-system {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .analysis-grid {
+                grid-template-columns: 1fr;
+                gap: 2rem;
+            }
+        }
+
+        /* 마지막 슬라이드 스크롤 개선 */
+        .slide:last-child {
+            overflow-y: auto;
+            padding-bottom: 150px;
+        }
+
+        /* 마지막 슬라이드 하단 여백 추가 */
+        .slide:nth-last-child(1), .slide:nth-last-child(2) {
+            padding-bottom: 150px;
+            padding-top: 80px;
+            justify-content: flex-start;
+        }
+
+        /* 마지막 슬라이드 제목 상단 여백 추가 */
+        .slide:nth-last-child(1) h1, .slide:nth-last-child(2) h1 {
+            margin-top: 1rem;
+            margin-bottom: 2.5rem;
+        }
+
+        /* 마지막 슬라이드 섹션 간격 조정 */
+        .slide:nth-last-child(1) .analysis-grid, 
+        .slide:nth-last-child(2) .analysis-grid,
+        .slide:nth-last-child(1) .two-column, 
+        .slide:nth-last-child(2) .two-column,
+        .slide:nth-last-child(1) .three-column, 
+        .slide:nth-last-child(2) .three-column {
+            margin: 2rem 0;
+        }
+
+        /* 마지막 슬라이드 하이라이트 박스 간격 */
+        .slide:nth-last-child(1) .highlight-box, 
+        .slide:nth-last-child(2) .highlight-box {
+            margin: 2rem 0;
+        }
+
+        /* 텍스트 크기 조정으로 내용 압축 */
+        .slide:last-child h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .slide:last-child h3 {
+            font-size: 1.4rem;
+            margin-bottom: 0.8rem;
+        }
+
+        .slide:last-child .feature-card h4 {
+            font-size: 1.2rem;
+            margin-bottom: 0.6rem;
+        }
+
+        .slide:last-child .feature-card p {
+            font-size: 1rem;
+            line-height: 1.5;
+            margin-bottom: 0.8rem;
+        }
+
+        .slide:last-child .highlight-box {
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+        }
+
+        .slide:last-child .analysis-grid {
+            gap: 2rem;
+            margin: 1.5rem 0;
+        }
+
+        .slide:last-child .two-column {
+            gap: 2rem;
+            margin: 1.5rem 0;
+        }
+
+        .slide:last-child .three-column {
+            gap: 1.5rem;
+            margin: 1.5rem 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="presentation-container">
+        <!-- Progress Bar -->
+        <div class="progress-bar" id="progressBar"></div>
+        
+        <!-- Slide Counter -->
+        <div class="slide-counter">
+            <span id="currentSlide">1</span> / <span id="totalSlides">21</span>
+        </div>
+
+        <!-- Slide 1: 프로젝트 개요 -->
+        <div class="slide active title-slide">
+            <div>
+                <h1>🎬 영화는 왜 성공할까?</h1>
+                <h2>평점과 시대 흐름으로 보는 성공 예측</h2>
+                <p>TMDB 데이터를 활용한 머신러닝 분석</p>
+                
+                <div class="highlight-box" style="max-width: 800px; margin: 3rem auto;">
+                    <h3>🎯 핵심 연구 질문</h3>
+                    <p style="font-size: 1.4rem; line-height: 1.4;">
+                        "장르와 개봉 시대만으로<br>
+                        영화의 성공을 예측할 수 있을까?"
+                    </p>
+                </div>
+                
+                <div class="title-stats">
+                    <div class="title-stat">
+                        <h3>45,466편</h3>
+                        <p>분석 영화 수</p>
+                    </div>
+                    <div class="title-stat">
+                        <h3>45년간</h3>
+                        <p>분석 기간</p>
+                    </div>
+                    <div class="title-stat">
+                        <h3>84%</h3>
+                        <p>대성공 검출률</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 2: 데이터셋 소개 -->
+        <div class="slide">
+            <h1>📊 데이터셋 소개</h1>
+            
+            <div class="highlight-box">
+                <h3>TMDB Movie Dataset v11</h3>
+                <p>The Movie Database에서 제공하는 글로벌 영화 정보</p>
+            </div>
+
+            <div class="key-stats">
+                <div class="stat-card">
+                    <h3>45,466</h3>
+                    <p>총 영화 수</p>
+                </div>
+                <div class="stat-card">
+                    <h3>1980-2025</h3>
+                    <p>분석 기간<br>(45년간)</p>
+                </div>
+                <div class="stat-card">
+                    <h3>25개</h3>
+                    <p>주요 장르</p>
+                </div>
+                <div class="stat-card">
+                    <h3>1.0-10.0</h3>
+                    <p>평점 범위</p>
+                </div>
+            </div>
+
+            <div class="two-column">
+                <div>
+                    <h3>🔑 핵심 변수들</h3>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>변수명</th>
+                                <th>설명</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>genres</strong></td>
+                                <td>영화 장르 (JSON, 복수 가능)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>release_date</strong></td>
+                                <td>개봉일 (시대 구분 기준)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>vote_average</strong></td>
+                                <td>평점 (예측 타겟)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>vote_count</strong></td>
+                                <td>투표 수 (품질 판단)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div>
+                    <h3>📈 데이터 특징</h3>
+                    <div class="feature-card">
+                        <h4>디지털 시대 급증</h4>
+                        <p>2000년대 이후 데이터 폭발적 증가</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>글로벌 커버리지</h4>
+                        <p>한국, 미국, 유럽 등 전 세계 영화</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>실제 관객 평점</h4>
+                        <p>전문가가 아닌 일반 관객 평가</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>신뢰성 확보</h4>
+                        <p>투표수 기반 품질 필터링 적용</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 3: 분석 방향 설정 -->
+        <div class="slide">
+            <h1>🎯 분석 방향 설정</h1>
+            
+            <div class="three-column">
+                <div class="feature-card">
+                    <h4>🔍 가설 1: 시대별 패턴</h4>
+                    <p>"시대가 변하면 성공하는 영화의 장르도 변한다"</p>
+                </div>
+                <div class="feature-card">
+                    <h4>🎭 가설 2: 장르별 특성</h4>
+                    <p>"각 장르마다 고유한 성공 확률과 패턴이 있다"</p>
+                </div>
+                <div class="feature-card">
+                    <h4>🤖 가설 3: 예측 가능성</h4>
+                    <p>"장르와 시대 정보만으로도 기본적인 성공 여부를 예측할 수 있다"</p>
+                </div>
+            </div>
+
+            <div class="highlight-box">
+                <h3>🎯 4단계 등급 체계 설계</h3>
+                <p>명확한 성공 기준을 위한 평점 구간 분류</p>
+            </div>
+
+            <div class="grade-system">
+                <div class="grade-card low">
+                    <h4>🔴 기타</h4>
+                    <p>< 6.5점<br>상업적 실패</p>
+                </div>
+                <div class="grade-card normal">
+                    <h4>🟡 평범</h4>
+                    <p>6.5-7.5점<br>평균적 성과</p>
+                </div>
+                <div class="grade-card success">
+                    <h4>🟢 성공</h4>
+                    <p>7.5-8.0점<br>상업적 성공</p>
+                </div>
+                <div class="grade-card excellent">
+                    <h4>🏆 대성공</h4>
+                    <p>≥ 8.0점<br>작품성+흥행</p>
+                </div>
+            </div>
+
+            <div class="two-column">
+                <div>
+                    <h3>📋 분석 목표</h3>
+                    <ul>
+                        <li><strong>장르별 성공 패턴 발견</strong><br>어떤 장르가 언제 성공하는가?</li>
+                        <li><strong>시대별 트렌드 변화 추적</strong><br>40년간 관객 취향 변화 분석</li>
+                        <li><strong>성공 예측 모델 구축</strong><br>머신러닝 기반 확률 예측</li>
+                        <li><strong>실무 활용 가이드 제공</strong><br>영화 기획 의사결정 지원</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3>💼 기대 효과</h3>
+                    <ul>
+                        <li><strong>영화 기획 단계 의사결정 지원</strong><br>장르 선택의 과학적 근거</li>
+                        <li><strong>데이터 기반 투자 리스크 관리</strong><br>실패 확률 사전 예측</li>
+                        <li><strong>영화 산업 트렌드 이해</strong><br>시장 변화 대응 전략</li>
+                        <li><strong>성공 요인 체계적 분석</strong><br>경험적 판단의 과학화</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 4: 데이터 전처리 개요 -->
+        <div class="slide">
+            <h1>🔧 데이터 전처리 개요</h1>
+            
+            <div class="process-flow">
+                <div class="process-step">
+                    <h4>1</h4>
+                    <p>품질 관리</p>
+                </div>
+                <div class="process-step">
+                    <h4>2</h4>
+                    <p>장르 표준화</p>
+                </div>
+                <div class="process-step">
+                    <h4>3</h4>
+                    <p>시간 변환</p>
+                </div>
+                <div class="process-step">
+                    <h4>4</h4>
+                    <p>범위 확정</p>
+                </div>
+            </div>
+
+            <div class="two-column">
+                <div>
+                    <h3>🎯 1단계: 데이터 품질 관리</h3>
+                    <div class="feature-card">
+                        <h4>투표수 기반 신뢰도 필터링</h4>
+                        <p><strong>1980~2019년:</strong> 투표수 ≥ 4표<br>
+                        <strong>2020~2025년:</strong> 투표수 ≥ 1표<br>
+                        <em>이유: 최근 영화는 상대적으로 투표수가 적어 기준 완화</em></p>
+                    </div>
+                    
+                    <h3>🏷️ 2단계: 장르 정보 표준화</h3>
+                    <div class="feature-card">
+                        <h4>JSON → 표준 리스트 변환</h4>
+                        <p><code>[{"name": "Action"}, {"name": "Thriller"}]</code><br>
+                        ↓<br>
+                        <code>['Action', 'Thriller']</code></p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>드라마/다큐멘터리 특별 규칙</h4>
+                        <p><strong>다른 장르와 함께:</strong> 제외 (너무 포괄적)<br>
+                        <strong>단독 장르:</strong> 포함</p>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3>📅 3단계: 시간 차원 변환</h3>
+                    <div class="feature-card">
+                        <h4>개봉일 → 시대(Decade)</h4>
+                        <p><code>1995-03-15 → 1995 → 1990s</code><br>
+                        연도별 세밀한 분석보다 시대별 트렌드에 집중</p>
+                    </div>
+                    
+                    <h3>📊 4단계: 분석 범위 확정</h3>
+                    <div class="feature-card">
+                        <h4>최종 분석 대상: 1980-2025년</h4>
+                        <p><strong>이유:</strong><br>
+                        • 충분한 데이터 확보<br>
+                        • 현대적 영화 산업 반영<br>
+                        • 디지털 시대 변화 포함</p>
+                    </div>
+                    
+                    <div class="chart-container">
+                        <h4>📈 전처리 결과 요약</h4>
+                        <p><strong>원본:</strong> 45,466편 → <strong>필터링 후:</strong> 43,766편<br>
+                        <strong>제거된 데이터:</strong> 극단적 평점, 투표수 부족<br>
+                        <strong>품질 향상:</strong> 신뢰할 수 있는 평점 데이터 확보</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 5: EDA 1 - 평점분포 -->
+        <div class="slide">
+            <h1>📊 EDA 1 - 평점분포</h1>
+            
+            <div class="key-stats">
+                <div class="stat-card">
+                    <h3>6.8점</h3>
+                    <p>평균 평점</p>
+                </div>
+                <div class="stat-card">
+                    <h3>6.9점</h3>
+                    <p>중앙값</p>
+                </div>
+                <div class="stat-card">
+                    <h3>1.2점</h3>
+                    <p>표준편차</p>
+                </div>
+                <div class="stat-card">
+                    <h3>정규분포</h3>
+                    <p>분포 형태</p>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <h4>📈 평점 분포 히스토그램</h4>
+                <p><strong>특징:</strong> 정규분포에 가까우나 8.5점 이상에서 편향 발생<br>
+                <strong>관찰:</strong> 대부분 영화가 5-8점 사이에 집중 분포<br>
+                <strong>이상치:</strong> 극단적 고평점(9.5+)과 저평점(2.0-)이 소수 존재</p>
+            </div>
+
+            <div class="two-column">
+                <div>
+                    <h3>🔍 주요 발견사항</h3>
+                    
+                    <div class="feature-card">
+                        <h4>📈 8.5점 이상 고평점 편향</h4>
+                        <p><strong>비율:</strong> 전체의 약 15%<br>
+                        <strong>원인:</strong> 투표수가 적은 소규모/독립 영화들<br>
+                        <strong>특징:</strong> 마니아층 중심의 높은 평가</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>📉 4점 이하 저평점 집중</h4>
+                        <p><strong>비율:</strong> 전체의 약 8%<br>
+                        <strong>특징:</strong> 명백한 실패작들<br>
+                        <strong>경향:</strong> 주로 B급 영화나 저예산 영화</p>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3>💡 핵심 인사이트</h3>
+                    
+                    <div class="highlight-box">
+                        <h3>투표수 필터링의 필요성</h3>
+                        <p>투표수 1-3표 영화에서 평점 9.5점도 존재<br>
+                        투표수 100표+ 영화는 상대적으로 안정적 분포</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>🎯 결론</h4>
+                        <p><strong>대부분의 영화가 5-8점 사이에 분포</strong><br>
+                        극단적 평점은 특수한 상황을 반영<br>
+                        신뢰할 수 있는 평점을 위해 최소 투표수 기준 필요</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>📊 분포 특성 요약</h4>
+                        <p><strong>정상 범위:</strong> 5.0 - 8.0점 (약 70%)<br>
+                        <strong>고평점:</strong> 8.0+ (약 22%)<br>
+                        <strong>저평점:</strong> 5.0점 미만 (약 8%)</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 6: EDA 2 - 평점 구간화 -->
+        <div class="slide">
+            <h1>🎯 EDA 2 - 평점 구간화</h1>
+            
+            <div class="highlight-box">
+                <h3>4단계 등급 체계 상세 분석</h3>
+                <p>투표수 필터링 후 최종 분포 (총 45,466편)</p>
+            </div>
+
+            <div class="grade-system">
+                <div class="grade-card low">
+                    <h4>🔴 기타</h4>
+                    <p>< 6.5점<br>26,847편 (59.2%)</p>
+                </div>
+                <div class="grade-card normal">
+                    <h4>🟡 평범</h4>
+                    <p>6.5-7.5점<br>12,753편 (28.1%)</p>
+                </div>
+                <div class="grade-card success">
+                    <h4>🟢 성공</h4>
+                    <p>7.5-8.0점<br>3,942편 (8.7%)</p>
+                </div>
+                <div class="grade-card excellent">
+                    <h4>🏆 대성공</h4>
+                    <p>≥ 8.0점<br>1,924편 (4.0%)</p>
+                </div>
+            </div>
+
+            <div class="two-column">
+                <div>
+                    <h3>⚠️ 클래스 불균형 문제</h3>
+                    
+                    <div class="feature-card">
+                        <h4>심각한 불균형 상황</h4>
+                        <p><strong>기타 (59%)</strong> vs <strong>대성공 (4%)</strong><br>
+                        약 15:1의 극단적 차이</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>도전 과제</h4>
+                        <p><strong>소수 클래스 예측 어려움</strong><br>
+                        모델이 다수 클래스에 편향되기 쉬움<br>
+                        실제 성공작을 놓칠 위험</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>해결 전략</h4>
+                        <p><strong>2단계 분류 접근</strong><br>
+                        SMOTE 오버샘플링 적용<br>
+                        Balanced 가중치 사용</p>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3>📏 구간 설정 근거</h3>
+                    
+                    <div class="feature-card">
+                        <h4>6.5점 기준</h4>
+                        <p>일반적으로 '괜찮다'고 여겨지는 최소 점수<br>
+                        관객들의 심리적 합격선</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>7.5점 기준</h4>
+                        <p>'성공작'으로 인정받는 기준점<br>
+                        상업적 성공의 임계값</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>8.0점 기준</h4>
+                        <p>'명작' 수준으로 평가받는 작품들<br>
+                        작품성과 대중성 모두 인정</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>💡 시사점</h4>
+                        <p><strong>성공작(7.5점+)은 전체의 12.7%</strong><br>
+                        영화 제작의 높은 리스크 확인<br>
+                        데이터 기반 예측의 필요성 입증</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <h4>📊 등급별 분포 시각화</h4>
+                <p><strong>파이차트:</strong> 기타(59%) > 평범(28%) > 성공(9%) > 대성공(4%)<br>
+                <strong>관찰:</strong> 피라미드 구조로 상위 등급일수록 급격히 감소<br>
+                <strong>의미:</strong> 영화 산업의 자연스러운 성공 분포를 반영</p>
+            </div>
+        </div>
+
+        <!-- Slide 7: EDA 3 - 장르별, 시대별 분석 -->
+        <div class="slide">
+            <h1>🎭 EDA 3 - 장르별, 시대별 분석</h1>
+            
+            <div class="analysis-grid">
+                <div>
+                    <h3>🏆 장르별 성공 패턴</h3>
+                    
+                    <h4>고평점 강세 장르 TOP 5</h4>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>순위</th>
+                                <th>장르</th>
+                                <th>8.0+ 비율</th>
+                                <th>특징</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>1</td>
+                                <td>🎵 뮤직</td>
+                                <td>18.7%</td>
+                                <td>예술성 인정</td>
+                            </tr>
+                            <tr>
+                                <td>2</td>
+                                <td>📽️ 다큐멘터리</td>
+                                <td>16.3%</td>
+                                <td>사회적 메시지</td>
+                            </tr>
+                            <tr>
+                                <td>3</td>
+                                <td>✨ 애니메이션</td>
+                                <td>12.5%</td>
+                                <td>전 연령 어필</td>
+                            </tr>
+                            <tr>
+                                <td>4</td>
+                                <td>🕵️ 미스터리</td>
+                                <td>11.8%</td>
+                                <td>스토리텔링 우수</td>
+                            </tr>
+                            <tr>
+                                <td>5</td>
+                                <td>🤠 웨스턴</td>
+                                <td>11.2%</td>
+                                <td>희소성 가치</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    
+                    <h4>대중적이지만 평점 아쉬운 장르</h4>
+                    <div class="feature-card">
+                        <h4>🎬 액션 (6.1점 평균)</h4>
+                        <p>높은 제작량, 중간 수준 평점</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>😱 호러 (5.8점 평균)</h4>
+                        <p>호불호 극명, 낮은 평균 평점</p>
+                    </div>
+                    <div class="feature-card">
+                        <h4>💕 로맨스 (6.3점 평균)</h4>
+                        <p>장르팬 선호, 일반 평가 보통</p>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3>📅 시대별 트렌드 변화</h3>
+                    
+                    <div class="feature-card">
+                        <h4>1980년대: 단순 명쾌</h4>
+                        <p>코미디, 드라마 절대 우위<br>
+                        장르 구분 명확<br>
+                        블록버스터 이전 시대</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>1990년대: 기술 발전</h4>
+                        <p>액션 영화 급부상<br>
+                        특수효과 기술 발달<br>
+                        장르 융합 시작</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>2000년대: 다양성 확대</h4>
+                        <p>다큐멘터리 주목받기 시작<br>
+                        독립영화 성장<br>
+                        디지털 기술 도입</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>2010년대: 장르 혁신</h4>
+                        <p>슈퍼히어로 영화 전성시대<br>
+                        다큐멘터리 고평점 급증<br>
+                        넷플릭스 등 OTT 영향</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>2020년대: 새로운 기준</h4>
+                        <p><strong>가장 높은 평균 평점 시대</strong><br>
+                        코로나19 영향으로 제작 환경 변화<br>
+                        글로벌 콘텐츠 확산</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <h4>📊 장르×시대 히트맵 주요 발견</h4>
+                <p><strong>Comedy:</strong> 전 시대 최다 제작 → 2020년대 상대적 감소<br>
+                <strong>Documentary:</strong> 1980년대 364편 → 2020년대 7,203편 (19.8배 증가!)<br>
+                <strong>Action:</strong> 꾸준한 제작량 유지, 평점은 중간 수준<br>
+                <strong>Music:</strong> 적은 제작량, 일관된 고평점 유지</p>
+            </div>
+
+            <div class="highlight-box">
+                <h3>🔑 핵심 트렌드</h3>
+                <p><strong>"시간이 갈수록 전문성/예술성 장르의 평가 상승"</strong><br>
+                대중 오락에서 다양성과 작품성을 중시하는 방향으로 변화</p>
+            </div>
+        </div>
+
+        <!-- Slide 8: 변수 선택 및 가공 -->
+        <div class="slide">
+            <h1>⚙️ 변수 선택 및 가공</h1>
+            
+            <div class="highlight-box">
+                <h3>머신러닝을 위한 특성 엔지니어링</h3>
+                <p>텍스트 데이터 → 수치형 특성으로 변환</p>
+            </div>
+
+            <div class="two-column">
+                <div>
+                    <h3>🎭 멀티핫 인코딩 (장르)</h3>
+                    <div class="feature-card">
+                        <h4>하나의 영화 = 여러 장르 가능</h4>
+                        <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; margin: 1rem 0; font-family: monospace;">
+영화 A: [액션, 스릴러]<br>
+→ genre_Action=1, genre_Thriller=1, 나머지=0<br><br>
+영화 B: [코미디]<br>
+→ genre_Comedy=1, 나머지=0
+                        </div>
+                    </div>
+                    
+                    <h3>📅 원핫 인코딩 (시대)</h3>
+                    <div class="feature-card">
+                        <h4>하나의 시대만 가능 (상호배타적)</h4>
+                        <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; margin: 1rem 0; font-family: monospace;">
+1995년 영화<br>
+→ decade_1990s=1, 나머지=0<br><br>
+2021년 영화<br>
+→ decade_2020s=1, 나머지=0
+                        </div>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3>🔝 상위 25개 장르 선별</h3>
+                    <div class="feature-card">
+                        <h4>선별 기준</h4>
+                        <p><strong>기준:</strong> 고유 영화 수 기준 상위 25개<br>
+                        <strong>이유:</strong> 희귀 장르 제외로 노이즈 감소<br>
+                        <strong>효과:</strong> 모델 복잡도 감소, 성능 향상</p>
+                    </div>
+                    
+                    <h3>📊 영화 단위 집계</h3>
+                    <div class="feature-card">
+                        <h4>중복 행 처리</h4>
+                        <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; margin: 1rem 0; font-family: monospace;">
+# 장르 explode로 인한 중복 행<br>
+→ 영화 단위로 재집계<br><br>
+집계 방법:<br>
+├── 평점: 평균값 (동일 영화는 동일 평점)<br>
+└── 장르: 최댓값 (해당 장르 보유 여부)
+                        </div>
+                    </div>
+                    
+                    <h3>🎯 최종 특성 구성</h3>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>특성 유형</th>
+                                <th>개수</th>
+                                <th>예시</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>장르 특성</td>
+                                <td>25개</td>
+                                <td>genre_Action, genre_Comedy...</td>
+                            </tr>
+                            <tr>
+                                <td>시대 특성</td>
+                                <td>5개</td>
+                                <td>decade_1980s, decade_1990s...</td>
+                            </tr>
+                            <tr>
+                                <td><strong>총 특성 수</strong></td>
+                                <td><strong>30개</strong></td>
+                                <td>입력 벡터 차원</td>
+                            </tr>
+                            <tr>
+                                <td>타겟 변수</td>
+                                <td>1개</td>
+                                <td>4등급 분류</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 9: 모델 선정 및 설명 -->
+        <div class="slide">
+            <h1>🤖 모델 선정 및 설명</h1>
+            
+            <div class="highlight-box">
+                <h3>2개 모델 비교 전략</h3>
+                <p>해석력 vs 성능의 균형을 위한 대표 모델 선택</p>
+            </div>
+
+            <div class="two-column">
+                <div>
+                    <h3>📊 로지스틱 회귀</h3>
+                    
+                    <div class="feature-card">
+                        <h4>✅ 선정 이유</h4>
+                        <p><strong>뛰어난 해석력:</strong> 계수를 통한 직관적 이해<br>
+                        <strong>빠른 학습:</strong> 대용량 데이터 처리 가능<br>
+                        <strong>베이스라인:</strong> 기본 성능 확인에 적합<br>
+                        <strong>계수 분석:</strong> "액션 장르는 성공 확률을 20% 높인다"</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>⚙️ 작동 원리</h4>
+                        <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; margin: 1rem 0; font-family: monospace; font-size: 0.9rem;">
+점수 계산 → 시그모이드 변환 → 확률 → 분류<br><br>
+예) 액션(+2점) + 2020년대(+3점)<br>
+= 5점 → 85% 확률 → 성공
+                        </div>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>❌ 한계점</h4>
+                        <p><strong>선형 관계만 학습:</strong> 복잡한 상호작용 못 잡음<br>
+                        <strong>특정 조합 효과:</strong> "액션+1980년대"만의 특별한 패턴 학습 어려움</p>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3>🌲 랜덤포레스트</h3>
+                    
+                    <div class="feature-card">
+                        <h4>✅ 선정 이유</h4>
+                        <p><strong>비선형 패턴:</strong> 장르×시대 조합 효과 학습<br>
+                        <strong>과적합 방지:</strong> 여러 트리의 앙상블 효과<br>
+                        <strong>변수 중요도:</strong> 어떤 특성이 중요한지 측정<br>
+                        <strong>안정성:</strong> 노이즈에 강함</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>⚙️ 작동 원리</h4>
+                        <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; margin: 1rem 0; font-family: monospace; font-size: 0.9rem;">
+여러 결정트리 → 각각 다른 관점으로 예측<br>
+→ 다수결 투표<br><br>
+트리1: "2020년대 + 뮤직 → 대성공"<br>
+트리2: "애니메이션 → 성공"<br> 
+트리3: "액션 + 호러 → 평범"<br>
+→ 최종: 투표 결과로 결정
+                        </div>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>✅ 특장점</h4>
+                        <p><strong>복잡한 규칙:</strong> "2010년대 다큐멘터리는 대성공하지만, 1980년대는 아니다"<br>
+                        <strong>상호작용:</strong> 장르와 시대의 조합 효과 자동 학습</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <h4>🔍 모델 비교 요약</h4>
+                <p><strong>로지스틱 회귀:</strong> 해석 용이 + 빠른 실행 + 직관적 계수<br>
+                <strong>랜덤포레스트:</strong> 복잡 패턴 학습 + 안정적 성능 + 변수 중요도<br>
+                <strong>선택 기준:</strong> 해석력이 필요하면 로지스틱, 성능이 중요하면 랜덤포레스트</p>
+            </div>
+        </div>
+
+        <!-- Slide 10: 2단계 분류 전략 -->
+        <div class="slide">
+            <h1>🎯 2단계 분류 전략</h1>
+            
+            <div class="highlight-box">
+                <h3>계층적 분류로 문제 해결</h3>
+                <p>복잡한 4클래스 문제를 단순한 2단계로 분해</p>
+            </div>
+
+            <div class="analysis-grid">
+                <div>
+                    <h3>❓ 왜 2단계로 나눴을까?</h3>
+                    
+                    <div class="feature-card">
+                        <h4>🚨 문제 상황</h4>
+                        <p>4클래스 동시 분류 시 심각한 불균형<br>
+                        기타(59%) vs 대성공(4%)의 극단적 차이<br>
+                        중간 등급들의 애매한 경계</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>💡 해결 전략: 계층적 접근</h4>
+                        <p>어려운 문제를 쉬운 문제들로 분해<br>
+                        각 단계별 최적화 가능<br>
+                        단계별 의미가 명확</p>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3>📊 단계별 분류 비율</h3>
+                    
+                    <div class="chart-container">
+                        <h4>전체 데이터 분포</h4>
+                        <p><strong>기타:</strong> 59.2% (26,847편)<br>
+                        <strong>상위:</strong> 40.8% (18,619편)<br>
+                        └ 평범: 28.1% (12,753편)<br>
+                        └ 성공: 8.7% (3,942편)<br>
+                        └ 대성공: 4.0% (1,924편)</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="process-flow">
+                <div class="process-step">
+                    <h4>1</h4>
+                    <p>기본 품질 분류</p>
+                </div>
+                <div class="process-step">
+                    <h4>2</h4>
+                    <p>세부 등급 분류</p>
+                </div>
+            </div>
+
+            <div class="two-column">
+                <div>
+                    <h3>🥇 1단계: 기본 품질 분류</h3>
+                    
+                    <div class="feature-card">
+                        <h4>분류 기준</h4>
+                        <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; margin: 1rem 0; font-family: monospace;">
+전체 영화 → [기타] vs [상위]<br>
+상위 = 평범 + 성공 + 대성공
+                        </div>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>🎯 목적</h4>
+                        <p><strong>"이 영화가 볼 만한가?"</strong><br>
+                        상대적으로 명확한 구분선<br>
+                        불균형 완화: 59% vs 41%</p>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3>🥈 2단계: 세부 등급 분류</h3>
+                    
+                    <div class="feature-card">
+                        <h4>분류 기준</h4>
+                        <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; margin: 1rem 0; font-family: monospace;">
+상위 영화 → [평범] vs [성공] vs [대성공]
+                        </div>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>🎯 목적</h4>
+                        <p><strong>"얼마나 성공할 것인가?"</strong><br>
+                        기타 제거로 품질 편차 감소<br>
+                        더 균등한 클래스 분포</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="three-column">
+                <div class="feature-card">
+                    <h4>💡 전략적 장점</h4>
+                    <p><strong>복잡도 감소:</strong> 4클래스 → 2+3클래스<br>
+                    <strong>불균형 완화:</strong> 각 단계별 최적화<br>
+                    <strong>해석 용이성:</strong> 단계별 의미 명확</p>
+                </div>
+                
+                <div class="feature-card">
+                    <h4>⚙️ 임계값 최적화</h4>
+                    <p>1단계에서 Balanced Accuracy 기준<br>
+                    Precision과 Recall 트레이드오프 고려<br>
+                    실무에서는 Recall 우선 고려</p>
+                </div>
+                
+                <div class="feature-card">
+                    <h4>📈 성능 향상</h4>
+                    <p><strong>단계별 특화:</strong> 각 단계에 맞는 모델<br>
+                    <strong>오류 전파 최소화:</strong> 1단계 실패가 전체에 미치는 영향 제한</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 11: 모델 학습 및 평가 방법 -->
+        <div class="slide">
+            <h1>📏 모델 학습 및 평가 방법</h1>
+            
+            <div class="analysis-grid">
+                <div>
+                    <h3>🔄 체계적 성능 평가 체계</h3>
+                    
+                    <div class="feature-card">
+                        <h4>📊 데이터 분할 전략</h4>
+                        <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; margin: 1rem 0; font-family: monospace;">
+전체 데이터 → 훈련용(80%) : 테스트용(20%)<br><br>
+stratify=y: 클래스 비율 유지하며 분할<br>
+random_state=42: 재현 가능한 결과
+                        </div>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>⚖️ 클래스 불균형 대응</h4>
+                        <p><strong>1. class_weight='balanced':</strong> 자동 가중치 조정<br>
+                        <strong>2. 오버샘플링:</strong> SMOTE, RandomOverSampler<br>
+                        <strong>3. 2단계 분류:</strong> 구조적 불균형 해결</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>🔍 교차검증 적용</h4>
+                        <p>5-Fold Cross Validation으로 안정성 확인<br>
+                        하이퍼파라미터 최적화에 활용<br>
+                        과적합 방지 및 일반화 성능 보장</p>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3>📊 평가 지표 체계</h3>
+                    
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>지표</th>
+                                <th>의미</th>
+                                <th>활용</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Accuracy</strong></td>
+                                <td>전체 정확도</td>
+                                <td>단순하지만 불균형 시 왜곡</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Balanced Accuracy</strong></td>
+                                <td>클래스별 Recall 평균</td>
+                                <td>불균형 상황 적합</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Precision</strong></td>
+                                <td>예측한 것 중 맞는 비율</td>
+                                <td>거짓 양성 최소화</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Recall</strong></td>
+                                <td>실제 것 중 찾아낸 비율</td>
+                                <td>거짓 음성 최소화</td>
+                            </tr>
+                            <tr>
+                                <td><strong>F1-Score</strong></td>
+                                <td>Precision과 Recall 조화평균</td>
+                                <td>균형잡힌 성능 측정</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="three-column">
+                <div class="feature-card">
+                    <h4>💼 비즈니스 관점 평가</h4>
+                    <p><strong>대성공 Recall:</strong> 실제 히트작을 얼마나 놓치지 않는가?<br>
+                    <strong>기타 Precision:</strong> 실패작을 얼마나 정확히 걸러내는가?<br>
+                    <strong>전체적 균형:</strong> 모든 등급에서 고른 성능</p>
+                </div>
+                
+                <div class="feature-card">
+                    <h4>🔍 혼동행렬 분석</h4>
+                    <p>어떤 등급끼리 헷갈리는지 패턴 분석<br>
+                    오분류 원인 파악 및 개선 방향 도출<br>
+                    모델의 실제 성능 세부 진단</p>
+                </div>
+                
+                <div class="feature-card">
+                    <h4>📈 성능 최적화 과정</h4>
+                    <p><strong>1단계:</strong> 기본 모델 성능 확인<br>
+                    <strong>2단계:</strong> 하이퍼파라미터 튜닝<br>
+                    <strong>3단계:</strong> 클래스 불균형 해결<br>
+                    <strong>4단계:</strong> 최종 성능 검증</p>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <h4>🎯 평가 기준 우선순위</h4>
+                <p><strong>1순위:</strong> Balanced Accuracy (전체적 균형)<br>
+                <strong>2순위:</strong> 대성공/성공 Recall (놓치지 않기)<br>
+                <strong>3순위:</strong> 기타 Precision (실패작 걸러내기)<br>
+                <strong>4순위:</strong> 전체 Accuracy (단순 정확도)</p>
+            </div>
+        </div>
+
+        <!-- Slide 12: 로지스틱 회귀 결과 -->
+        <div class="slide">
+            <h1>📊 로지스틱 회귀 결과</h1>
+            
+            <div class="highlight-box">
+                <h3>선형 모델의 해석 가능한 인사이트</h3>
+                <p>계수 분석을 통한 각 요인의 영향력 정량화</p>
+            </div>
+
+            <div class="analysis-grid">
+                <div>
+                    <h3>📈 단계별 성능</h3>
+                    
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>단계</th>
+                                <th>분류 대상</th>
+                                <th>Balanced Accuracy</th>
+                                <th>주요 성능</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>1단계</strong></td>
+                                <td>기타 vs 상위</td>
+                                <td>65.4%</td>
+                                <td>기본 품질 구분 안정적</td>
+                            </tr>
+                            <tr>
+                                <td><strong>2단계</strong></td>
+                                <td>평범/성공/대성공</td>
+                                <td>-</td>
+                                <td>오버샘플링 후 개선</td>
+                            </tr>
+                            <tr>
+                                <td><strong>최종</strong></td>
+                                <td>전체 통합</td>
+                                <td>52.7%</td>
+                                <td>대성공 검출률 84%</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    
+                    <div class="feature-card">
+                        <h4>🎯 1단계 세부 성능</h4>
+                        <p><strong>기타 분류:</strong> Precision 71.8%, Recall 68.7%<br>
+                        <strong>상위 분류:</strong> Precision 57.6%, Recall 61.2%<br>
+                        <strong>해석:</strong> 기본적인 품질 구분은 안정적으로 수행</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>🚀 2단계 세부 성능</h4>
+                        <p><strong>대성공:</strong> Recall 86.1% (뛰어난 검출력!)<br>
+                        <strong>성공:</strong> Recall 52.4% (중간 수준)<br>
+                        <strong>평범:</strong> Recall 매우 낮음 (취약점)</p>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3>🏆 최종 통합 성능</h3>
+                    
+                    <div class="key-stats" style="grid-template-columns: repeat(2, 1fr);">
+                        <div class="stat-card">
+                            <h3>52.7%</h3>
+                            <p>전체 Balanced<br>Accuracy</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>84.0%</h3>
+                            <p>대성공 검출률<br>(매우 우수)</p>
+                        </div>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>✅ 강점</h4>
+                        <p><strong>대성공 검출:</strong> 히트작을 거의 놓치지 않음<br>
+                        <strong>기타 분류:</strong> 실패작 구분 거의 완벽<br>
+                        <strong>해석 용이:</strong> 계수를 통한 직접적 이해</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>❌ 약점</h4>
+                        <p><strong>중간 등급:</strong> 평범/성공 구분 어려움 지속<br>
+                        <strong>선형 한계:</strong> 복잡한 상호작용 학습 제한</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="two-column">
+                <div>
+                    <h3>📈 계수 분석 결과 (대성공 기준)</h3>
+                    
+                    <h4>✅ 긍정적 영향 TOP 5</h4>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>순위</th>
+                                <th>변수</th>
+                                <th>계수</th>
+                                <th>해석</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>1</td>
+                                <td>decade_2020s</td>
+                                <td>+2.1</td>
+                                <td>최신 영화의 압도적 우위</td>
+                            </tr>
+                            <tr>
+                                <td>2</td>
+                                <td>genre_Music</td>
+                                <td>+1.8</td>
+                                <td>음악 장르의 전문성 인정</td>
+                            </tr>
+                            <tr>
+                                <td>3</td>
+                                <td>genre_Western</td>
+                                <td>+1.2</td>
+                                <td>희귀 장르의 높은 품질</td>
+                            </tr>
+                            <tr>
+                                <td>4</td>
+                                <td>genre_Mystery</td>
+                                <td>+0.9</td>
+                                <td>스토리텔링 우수성</td>
+                            </tr>
+                            <tr>
+                                <td>5</td>
+                                <td>genre_Documentary</td>
+                                <td>+0.8</td>
+                                <td>작품성 중심 평가</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div>
+                    <h4>❌ 부정적 영향 TOP 5</h4>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>순위</th>
+                                <th>변수</th>
+                                <th>계수</th>
+                                <th>해석</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>1</td>
+                                <td>genre_TV_Movie</td>
+                                <td>-1.5</td>
+                                <td>TV 영화의 한계</td>
+                            </tr>
+                            <tr>
+                                <td>2</td>
+                                <td>decade_1980s</td>
+                                <td>-1.2</td>
+                                <td>시대적 평가 기준 차이</td>
+                            </tr>
+                            <tr>
+                                <td>3</td>
+                                <td>genre_Romance</td>
+                                <td>-0.8</td>
+                                <td>대중성 vs 비평 괴리</td>
+                            </tr>
+                            <tr>
+                                <td>4</td>
+                                <td>decade_2000s</td>
+                                <td>-0.6</td>
+                                <td>상업영화 편중 시대</td>
+                            </tr>
+                            <tr>
+                                <td>5</td>
+                                <td>genre_Action</td>
+                                <td>-0.4</td>
+                                <td>스펙터클 > 내용</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    
+                    <div class="highlight-box">
+                        <h3>🔑 핵심 발견</h3>
+                        <p><strong>"2020년대 + 음악/다큐 장르 = 대성공 공식"</strong></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 13: 랜덤포레스트 결과 -->
+        <div class="slide">
+            <h1>🌲 랜덤포레스트 결과</h1>
+            
+            <div class="highlight-box">
+                <h3>앙상블 모델의 안정적 성능</h3>
+                <p>복잡한 패턴 학습과 균형잡힌 예측</p>
+            </div>
+
+            <div class="analysis-grid">
+                <div>
+                    <h3>📊 단계별 성능</h3>
+                    
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>단계</th>
+                                <th>분류 대상</th>
+                                <th>Balanced Accuracy</th>
+                                <th>특징</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>1단계</strong></td>
+                                <td>기타 vs 상위</td>
+                                <td>65.4%</td>
+                                <td>로지스틱과 동일</td>
+                            </tr>
+                            <tr>
+                                <td><strong>2단계</strong></td>
+                                <td>평범/성공/대성공</td>
+                                <td>-</td>
+                                <td>로지스틱 대비 보수적</td>
+                            </tr>
+                            <tr>
+                                <td><strong>최종</strong></td>
+                                <td>전체 통합</td>
+                                <td>53.5%</td>
+                                <td>더 균형잡힌 성능</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    
+                    <div class="feature-card">
+                        <h4>🎯 1단계 특징</h4>
+                        <p>두 모델 모두 기본 품질 구분에서 일치하는 성능<br>
+                        임계값 최적화: 0.50에서 최적 성능 확인<br>
+                        기본적인 패턴 인식 능력은 유사</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>🌲 2단계 세부 성능</h4>
+                        <p><strong>대성공:</strong> Recall 83.2%, Precision 58.6%<br>
+                        <strong>성공:</strong> Recall 50.0%, Precision 17.9%<br>
+                        <strong>평범:</strong> 여전히 낮은 검출률<br>
+                        <strong>특징:</strong> 로지스틱 대비 더 보수적 예측</p>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3>🏆 최종 통합 성능</h3>
+                    
+                    <div class="key-stats" style="grid-template-columns: repeat(2, 1fr);">
+                        <div class="stat-card">
+                            <h3>71.4%</h3>
+                            <p>전체 Accuracy</p>
+                        </div>
+                        <div class="stat-card">
+                            <h3>73.2%</h3>
+                            <p>대성공 Recall<br>(안정적)</p>
+                        </div>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>✅ 강점</h4>
+                        <p><strong>안정적 성능:</strong> 전반적으로 균형잡힌 결과<br>
+                        <strong>복잡 패턴:</strong> 비선형 관계 학습<br>
+                        <strong>과적합 방지:</strong> 앙상블을 통한 일반화</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>🔍 로지스틱 대비 차이점</h4>
+                        <p><strong>더 보수적:</strong> 확신이 있을 때만 예측<br>
+                        <strong>균형 지향:</strong> 극단적 예측 피함<br>
+                        <strong>안정성 우선:</strong> 일관된 성능 유지</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="two-column">
+                <div>
+                    <h3>🔍 랜덤포레스트 특성 중요도</h3>
+                    
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>순위</th>
+                                <th>변수</th>
+                                <th>중요도</th>
+                                <th>특징</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>1</td>
+                                <td>decade_2020s</td>
+                                <td>0.40</td>
+                                <td>압도적 영향력</td>
+                            </tr>
+                            <tr>
+                                <td>2</td>
+                                <td>decade_2010s</td>
+                                <td>0.20</td>
+                                <td>현대 영화의 우위</td>
+                            </tr>
+                            <tr>
+                                <td>3</td>
+                                <td>genre_Music</td>
+                                <td>0.08</td>
+                                <td>일관된 높은 평가</td>
+                            </tr>
+                            <tr>
+                                <td>4</td>
+                                <td>genre_Comedy</td>
+                                <td>0.06</td>
+                                <td>안정적 대중성</td>
+                            </tr>
+                            <tr>
+                                <td>5</td>
+                                <td>genre_TV_Movie</td>
+                                <td>0.05</td>
+                                <td>부정적 영향</td>
+                            </tr>
+                            <tr>
+                                <td>6</td>
+                                <td>decade_2000s</td>
+                                <td>0.04</td>
+                                <td>중간 시대 영향</td>
+                            </tr>
+                            <tr>
+                                <td>7</td>
+                                <td>genre_Documentary</td>
+                                <td>0.04</td>
+                                <td>작품성 인정</td>
+                            </tr>
+                            <tr>
+                                <td>8</td>
+                                <td>genre_Action</td>
+                                <td>0.03</td>
+                                <td>제한적 영향</td>
+                            </tr>
+                            <tr>
+                                <td>9</td>
+                                <td>decade_1990s</td>
+                                <td>0.03</td>
+                                <td>과거 시대 영향</td>
+                            </tr>
+                            <tr>
+                                <td>10</td>
+                                <td>genre_Drama</td>
+                                <td>0.03</td>
+                                <td>기본 장르 역할</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div>
+                    <h3>🔗 모델별 관점 차이</h3>
+                    
+                    <div class="feature-card">
+                        <h4>📊 로지스틱 회귀</h4>
+                        <p><strong>특정 변수에 강한 의존</strong><br>
+                        선형적 사고로 명확한 가중치<br>
+                        계수를 통한 직접적 해석<br>
+                        극단적 변수에 민감</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>🌲 랜덤포레스트</h4>
+                        <p><strong>여러 변수의 균형잡힌 활용</strong><br>
+                        복합적 사고로 상호작용 고려<br>
+                        변수 중요도를 통한 간접적 해석<br>
+                        안정적이고 보수적 판단</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>🤝 공통 인사이트</h4>
+                        <p><strong>"시대 > 장르"의 중요도 확인</strong><br>
+                        두 모델 모두 decade_2020s가 최고 순위<br>
+                        시대적 요인이 장르보다 4배 이상 중요</p>
+                    </div>
+                    
+                    <div class="chart-container">
+                        <h4>📈 중요도 분포 특성</h4>
+                        <p><strong>로지스틱:</strong> 소수 변수에 집중 (Top 3가 50%)<br>
+                        <strong>랜덤포레스트:</strong> 분산된 중요도 (Top 10이 골고루)<br>
+                        <strong>의미:</strong> RF가 더 다양한 패턴을 종합적으로 고려</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 14: 모델 성능 비교 -->
+        <div class="slide">
+            <h1>⚖️ 모델 성능 비교</h1>
+            
+            <div class="highlight-box">
+                <h3>로지스틱 회귀 vs 랜덤포레스트</h3>
+                <p>해석력과 성능의 균형을 고려한 종합 비교</p>
+            </div>
+
+            <h3>📊 종합 성능 비교표</h3>
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>지표</th>
+                        <th>로지스틱 회귀</th>
+                        <th>랜덤포레스트</th>
+                        <th>우세 모델</th>
+                        <th>차이점</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>1단계 Balanced Acc</strong></td>
+                        <td>65.4%</td>
+                        <td>65.4%</td>
+                        <td>동일</td>
+                        <td>기본 구분 성능</td>
+                    </tr>
+                    <tr>
+                        <td><strong>최종 Balanced Acc</strong></td>
+                        <td>52.7%</td>
+                        <td>53.5%</td>
+                        <td>🌲 RF</td>
+                        <td>미세한 차이</td>
+                    </tr>
+                    <tr>
+                        <td><strong>대성공 Recall</strong></td>
+                        <td>84.0%</td>
+                        <td>73.2%</td>
+                        <td>📊 로지스틱</td>
+                        <td>10.8%p 차이</td>
+                    </tr>
+                    <tr>
+                        <td><strong>전체 Accuracy</strong></td>
+                        <td>-</td>
+                        <td>71.4%</td>
+                        <td>🌲 RF</td>
+                        <td>안정성</td>
+                    </tr>
+                    <tr>
+                        <td><strong>해석 용이성</strong></td>
+                        <td>우수</td>
+                        <td>보통</td>
+                        <td>📊 로지스틱</td>
+                        <td>계수 분석</td>
+                    </tr>
+                    <tr>
+                        <td><strong>학습 속도</strong></td>
+                        <td>빠름</td>
+                        <td>보통</td>
+                        <td>📊 로지스틱</td>
+                        <td>단순함</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="two-column">
+                <div>
+                    <h3>📊 로지스틱 회귀의 강점</h3>
+                    
+                    <div class="feature-card">
+                        <h4>✅ 뛰어난 해석력</h4>
+                        <p>계수로 직접적 영향 파악<br>
+                        "2020년대는 성공 확률을 8배 높인다"<br>
+                        비즈니스 의사결정에 직접 활용 가능</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>✅ 대성공 검출</h4>
+                        <p>히트작 놓치지 않기 (84% Recall)<br>
+                        실무에서 가장 중요한 지표<br>
+                        잠재적 성공작 사전 발굴</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>✅ 빠른 실행</h4>
+                        <p>실시간 예측 가능<br>
+                        단순한 수식으로 즉시 계산<br>
+                        대용량 데이터 처리 효율적</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>✅ 인사이트 도출</h4>
+                        <p>비즈니스 전략 수립에 유리<br>
+                        각 요인의 정량적 기여도 측정<br>
+                        투자 의사결정 근거 제공</p>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3>🌲 랜덤포레스트의 강점</h3>
+                    
+                    <div class="feature-card">
+                        <h4>✅ 안정적 성능</h4>
+                        <p>전반적으로 균형잡힌 결과<br>
+                        극단적 예측 오류 방지<br>
+                        일관된 성능 유지</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>✅ 복잡 패턴</h4>
+                        <p>비선형 관계 학습<br>
+                        "2010년대 다큐멘터리만의 특별한 패턴"<br>
+                        장르×시대 상호작용 포착</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>✅ 변수 중요도</h4>
+                        <p>상대적 영향력 측정<br>
+                        feature importance를 통한 순위<br>
+                        다차원적 분석 가능</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>✅ 과적합 방지</h4>
+                        <p>앙상블을 통한 일반화<br>
+                        노이즈에 강한 예측<br>
+                        안정적인 실서비스 적용</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="three-column">
+                <div class="feature-card">
+                    <h4>🎯 목적별 모델 선택</h4>
+                    <p><strong>해석과 전략 수립:</strong> 로지스틱 회귀 우선<br>
+                    <strong>실제 예측 서비스:</strong> 랜덤포레스트 우선<br>
+                    <strong>히트작 발굴:</strong> 로지스틱 회귀 (높은 대성공 Recall)</p>
+                </div>
+                
+                <div class="feature-card">
+                    <h4>📊 성능 특성 요약</h4>
+                    <p><strong>로지스틱:</strong> 극단값에 강함, 해석 우수<br>
+                    <strong>랜덤포레스트:</strong> 안정성 우수, 복잡 패턴<br>
+                    <strong>공통점:</strong> 기본 품질 구분 동일 성능</p>
+                </div>
+                
+                <div class="feature-card">
+                    <h4>💼 실무 활용 권장</h4>
+                    <p><strong>리스크 관리:</strong> 랜덤포레스트 (안정적 성능)<br>
+                    <strong>전략 기획:</strong> 로지스틱 회귀 (명확한 인사이트)<br>
+                    <strong>하이브리드:</strong> 두 모델 결합 활용</p>
+                </div>
+            </div>
+
+            <div class="highlight-box">
+                <h3>🏆 결론</h3>
+                <p><strong>실용적 가치는 있으나 명확한 한계 존재</strong><br>
+                장르+시대만으로는 영화 성공의 일부만 설명 가능 (설명력 약 35%)<br>
+                중간 등급 구분의 어려움과 전체적으로 제한적인 예측 성능</p>
+            </div>
+        </div>
+
+        <!-- 성능 한계점 추가 슬라이드 -->
+        <div class="slide">
+            <h1>⚠️ 모델 성능의 현실적 한계</h1>
+            
+            <div class="highlight-box">
+                <h3>🚨 정직한 성능 평가</h3>
+                <p>53% 수준의 예측 정확도 - 동전 던지기(50%)보다 약간 나은 수준</p>
+            </div>
+
+            <div class="two-column">
+                <div>
+                    <h3>📉 주요 성능 제약사항</h3>
+                    
+                    <div class="feature-card" style="border-left-color: #e74c3c;">
+                        <h4>❌ 중간 등급 구분 실패</h4>
+                        <p><strong>평범(6.5-7.5) vs 성공(7.5-8.0):</strong> 거의 구분 불가<br>
+                        이 구간이 전체 영화의 37%를 차지하지만 예측 성능 매우 낮음<br>
+                        <strong>실무 한계:</strong> 가장 중요한 투자 구간에서 예측력 부족</p>
+                    </div>
+                    
+                    <div class="feature-card" style="border-left-color: #e74c3c;">
+                        <h4>❌ 낮은 전체 설명력</h4>
+                        <p><strong>Balanced Accuracy 53%:</strong> 예측 성능 제한적<br>
+                        <strong>의미:</strong> 47%는 여전히 예측 불가능<br>
+                        장르+시대로는 영화 성공 요인의 일부만 포착</p>
+                    </div>
+                    
+                    <div class="feature-card" style="border-left-color: #e74c3c;">
+                        <h4>❌ 클래스 불균형 미해결</h4>
+                        <p>오버샘플링을 적용해도 근본적 해결 안됨<br>
+                        소수 클래스(대성공 4%)의 학습 데이터 절대 부족<br>
+                        실제 성공 패턴 학습에 한계</p>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3>🔍 세부 성능 분석</h3>
+                    
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>등급</th>
+                                <th>실제 비율</th>
+                                <th>예측 성능</th>
+                                <th>문제점</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>기타</td>
+                                <td>59.2%</td>
+                                <td>양호</td>
+                                <td>다수 클래스 편향</td>
+                            </tr>
+                            <tr style="background: #fff5f5;">
+                                <td>평범</td>
+                                <td>28.1%</td>
+                                <td><strong>매우 낮음</strong></td>
+                                <td>경계 모호성</td>
+                            </tr>
+                            <tr style="background: #fff5f5;">
+                                <td>성공</td>
+                                <td>8.7%</td>
+                                <td><strong>낮음</strong></td>
+                                <td>중간 등급 혼재</td>
+                            </tr>
+                            <tr>
+                                <td>대성공</td>
+                                <td>4.0%</td>
+                                <td>상당함</td>
+                                <td>극단값만 구분 가능</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    
+                    <div class="feature-card" style="border-left-color: #f39c12;">
+                        <h4>🎯 실제 활용도 제한</h4>
+                        <p><strong>실무 관점:</strong> "이 영화가 대박날까?"보다는<br>
+                        "이 영화가 최소한 평범한 성과는 낼까?"가 더 중요<br>
+                        하지만 이 부분에서 예측력이 가장 약함</p>
+                    </div>
+                    
+                    <div class="feature-card" style="border-left-color: #e67e22;">
+                        <h4>📊 예측 정확도의 현실</h4>
+                        <p><strong>53% 정확도의 의미:</strong><br>
+                        • 동전 던지기: 50%<br>
+                        • 현재 모델: 53%<br>
+                        • 통계적으로 유의미하지만 실용성 제한</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chart-container" style="border-color: #e74c3c;">
+                <h4>🚨 성능 한계 시각화</h4>
+                <p><strong>혼동행렬 분석 결과:</strong><br>
+                • 기타 ↔ 대성공: 잘 구분됨 (극단 비교)<br>
+                • 평범 ↔ 성공: 거의 구분 안됨 (실무에서 가장 중요한 구간)<br>
+                • 전체적으로 보수적 예측 경향 (안전한 선택만 함)</p>
+            </div>
+        </div>
+
+        <!-- 근본적 한계점 슬라이드 추가 -->
+        <div class="slide">
+            <h1>🔍 장르+시대 접근법의 근본적 한계</h1>
+            
+            <div class="highlight-box">
+                <h3>💭 핵심 질문에 대한 솔직한 답변</h3>
+                <p>"장르와 시대만으로 영화 성공을 예측할 수 있을까?" <br>
+                <strong>→ 부분적으로만 가능하며, 한계가 명확함</strong></p>
+            </div>
+
+            <div class="analysis-grid">
+                <div>
+                    <h3>🚫 누락된 핵심 요소들</h3>
+                    
+                    <div class="feature-card" style="border-left-color: #e74c3c;">
+                        <h4>🎬 제작진 역량</h4>
+                        <p><strong>감독의 영향력:</strong> 크리스토퍼 놀란 vs 신인 감독<br>
+                        <strong>배우의 스타파워:</strong> 톰 크루즈 vs 무명 배우<br>
+                        <strong>제작사 브랜드:</strong> 마블 vs 소규모 독립영화사<br>
+                        <em>→ 이들의 영향이 장르보다 클 수 있음</em></p>
+                    </div>
+                    
+                    <div class="feature-card" style="border-left-color: #e74c3c;">
+                        <h4>💰 제작 환경</h4>
+                        <p><strong>제작비 규모:</strong> 1억 달러 vs 1백만 달러<br>
+                        <strong>마케팅 예산:</strong> 슈퍼볼 광고 vs SNS만<br>
+                        <strong>배급 규모:</strong> 전국 4000개관 vs 100개관<br>
+                        <em>→ 돈이 성공을 좌우하는 현실</em></p>
+                    </div>
+                    
+                    <div class="feature-card" style="border-left-color: #e74c3c;">
+                        <h4>📝 콘텐츠 품질</h4>
+                        <p><strong>스토리 완성도:</strong> 탄탄한 각본 vs 급조된 시나리오<br>
+                        <strong>연출력:</strong> 영상미, 연기 디렉션, 편집<br>
+                        <strong>기술적 완성도:</strong> 촬영, 음향, 특수효과<br>
+                        <em>→ 영화의 본질적 품질 요소 제외</em></p>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3>📊 설명력 부족의 구체적 증거</h3>
+                    
+                    <div class="chart-container" style="border-color: #e74c3c;">
+                        <h4>🔍 같은 조건, 다른 결과</h4>
+                        <p><strong>2020년대 액션 영화 사례:</strong><br>
+                        • 탑건: 매버릭 (8.2점) - 대성공<br>
+                        • 모르비우스 (5.2점) - 실패<br>
+                        • 동일한 장르+시대, 완전히 다른 결과<br>
+                        <strong>→ 장르+시대로는 구분 불가능</strong></p>
+                    </div>
+                    
+                    <div class="feature-card" style="border-left-color: #f39c12;">
+                        <h4>📉 낮은 R² 값 (결정계수)</h4>
+                        <p><strong>추정 R² ≈ 0.35:</strong> 전체 변동의 35%만 설명<br>
+                        나머지 65%는 모델이 설명하지 못하는 부분<br>
+                        <strong>의미:</strong> 더 중요한 요인들이 누락됨</p>
+                    </div>
+                    
+                    <div class="feature-card" style="border-left-color: #f39c12;">
+                        <h4>🎯 예측 vs 실제 괴리</h4>
+                        <p><strong>모델이 틀리는 경우:</strong><br>
+                        • 예상 성공작이 실패하는 경우<br>
+                        • 예상 실패작이 대박나는 경우<br>
+                        • 이런 "서프라이즈"가 전체의 47%</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="three-column">
+                <div class="feature-card" style="border-left-color: #9b59b6;">
+                    <h4>🎪 외부 환경 요인</h4>
+                    <p><strong>개봉 타이밍:</strong> 여름 시즌 vs 비수기<br>
+                    <strong>경쟁작:</strong> 같은 주 개봉 대작 여부<br>
+                    <strong>사회적 이슈:</strong> 시사성, 논란, 트렌드<br>
+                    <strong>글로벌 이벤트:</strong> 팬데믹, 경제위기 등</p>
+                </div>
+                
+                <div class="feature-card" style="border-left-color: #9b59b6;">
+                    <h4>🎨 창작의 비예측성</h4>
+                    <p><strong>혁신과 창의성:</strong> 공식을 깨는 작품들<br>
+                    <strong>예술적 영감:</strong> 데이터로 측정 불가<br>
+                    <strong>관객과의 케미:</strong> 예상치 못한 공감대<br>
+                    <strong>문화적 임팩트:</strong> 시대정신과의 만남</p>
+                </div>
+                
+                <div class="feature-card" style="border-left-color: #9b59b6;">
+                    <h4>📱 플랫폼 생태계</h4>
+                    <p><strong>OTT vs 극장:</strong> 관람 방식의 변화<br>
+                    <strong>SNS 바이럴:</strong> 입소문의 새로운 양상<br>
+                    <strong>글로벌 동시 개봉:</strong> 지역별 취향 차이<br>
+                    <strong>스트리밍 추천:</strong> 알고리즘의 영향</p>
+                </div>
+            </div>
+        </div>
+
+                <!-- Slide 15: 특성 중요도 분석 -->
+        <div class="slide">
+            <h1>🔍 특성 중요도 분석</h1>
+            
+            <div class="highlight-box">
+                <h3>영화 성공의 핵심 요소들 (제한적 범위 내에서)</h3>
+                <p>장르+시대 중에서 상대적으로 중요한 요인들</p>
+            </div>
+
+            <div class="analysis-grid">
+                <div>
+                    <h3>🕰️ 시대별 영향력 분석</h3>
+                    
+                    <div class="feature-card">
+                        <h4>🚀 압도적 1위: decade_2020s</h4>
+                        <p><strong>로지스틱 계수:</strong> +2.1 (최고값)<br>
+                        <strong>RF 중요도:</strong> 0.40 (전체의 40%)<br>
+                        <strong>의미:</strong> 최근 영화일수록 높은 평가</p>
+                    </div>
+                    
+                    <div class="chart-container">
+                        <h4>📊 시대별 성공 확률 비교</h4>
+                        <p><strong>2020년대:</strong> 기준점 (1.0배)<br>
+                        <strong>2010년대:</strong> 0.5배<br>
+                        <strong>2000년대:</strong> 0.3배<br>
+                        <strong>1990년대:</strong> 0.2배<br>
+                        <strong>1980년대:</strong> 0.1배 (최저)</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>📈 시대 효과의 원인 (추정)</h4>
+                        <p><strong>기술 발전:</strong> 영화 제작 기술 향상<br>
+                        <strong>관객 기준 상승:</strong> 더 까다로워진 평가<br>
+                        <strong>OTT 확산:</strong> 다양한 작품 접근성 증가<br>
+                        <strong>글로벌화:</strong> 세계적 수준의 콘텐츠 증가</p>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3>🎭 장르별 성공 공식</h3>
+                    
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>장르</th>
+                                <th>로지스틱 계수</th>
+                                <th>성공 특징</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr style="background: #d5f4e6;">
+                                <td>🎵 Music</td>
+                                <td>+1.8</td>
+                                <td>전문성, 예술성, 팬층 충성도</td>
+                            </tr>
+                            <tr style="background: #d5f4e6;">
+                                <td>🤠 Western</td>
+                                <td>+1.2</td>
+                                <td>희소성, 장르적 완성도</td>
+                            </tr>
+                            <tr style="background: #d5f4e6;">
+                                <td>🕵️ Mystery</td>
+                                <td>+0.9</td>
+                                <td>탄탄한 서사, 지적 만족</td>
+                            </tr>
+                            <tr style="background: #d5f4e6;">
+                                <td>📽️ Documentary</td>
+                                <td>+0.8</td>
+                                <td>사회적 메시지, 작품성</td>
+                            </tr>
+                            <tr style="background: #fff5f5;">
+                                <td>📺 TV Movie</td>
+                                <td>-1.5</td>
+                                <td>제작 환경의 한계</td>
+                            </tr>
+                            <tr style="background: #fff5f5;">
+                                <td>💕 Romance</td>
+                                <td>-0.8</td>
+                                <td>대중성 vs 비평 괴리</td>
+                            </tr>
+                            <tr style="background: #fff5f5;">
+                                <td>🎬 Action</td>
+                                <td>-0.4</td>
+                                <td>스펙터클 > 스토리</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="two-column">
+                <div>
+                    <h3>🎯 모델별 관점 차이</h3>
+                    
+                    <div class="feature-card">
+                        <h4>📊 로지스틱 회귀: 집중형</h4>
+                        <p><strong>소수 변수에 강한 의존</strong><br>
+                        Top 3 변수가 전체 영향의 60%<br>
+                        명확한 가중치로 직관적 이해<br>
+                        극단적 변수에 민감한 반응</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>🌲 랜덤포레스트: 분산형</h4>
+                        <p><strong>여러 변수의 균형잡힌 활용</strong><br>
+                        Top 10 변수가 골고루 기여<br>
+                        복합적 상호작용 고려<br>
+                        안정적이고 보수적 판단</p>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3>⚠️ 특성 중요도의 한계</h3>
+                    
+                    <div class="feature-card" style="border-left-color: #e74c3c;">
+                        <h4>🚨 제한된 설명력</h4>
+                        <p><strong>상대적 중요도일 뿐:</strong><br>
+                        현재 포함된 30개 변수 중에서만 비교<br>
+                        실제로는 더 중요한 변수들이 누락됨<br>
+                        <em>예: 감독 > 시대, 제작비 > 장르일 가능성</em></p>
+                    </div>
+                    
+                    <div class="feature-card" style="border-left-color: #f39c12;">
+                        <h4>🤔 해석의 주의점</h4>
+                        <p><strong>"시대가 장르보다 중요하다"는 결론의 한계:</strong><br>
+                        • 단순한 시대 효과가 아닐 수 있음<br>
+                        • 최근 영화의 다른 특성 반영일 가능성<br>
+                        • 평가 기준 자체의 변화일 수도 있음</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="highlight-box" style="background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);">
+                <h3>🔑 현실적 결론</h3>
+                <p><strong>"제한된 범위 내에서는 시대 > 장르"</strong><br>
+                하지만 이는 전체 성공 요인 중 일부분에 대한 분석 결과이며,<br>
+                실제로는 감독, 배우, 제작비, 스토리 등이 더 중요할 가능성이 높음</p>
+            </div>
+        </div>
+
+        <!-- Slide 16: 시각화 및 인사이트 -->
+        <div class="slide">
+            <h1>📈 시각화 및 인사이트</h1>
+            
+            <div class="highlight-box">
+                <h3>데이터에서 발견한 흥미로운 패턴들</h3>
+                <p>45년간의 영화 산업 변화와 관객 취향의 진화</p>
+            </div>
+
+            <div class="chart-container">
+                <h4>📊 핵심 시각화 결과</h4>
+                <p><strong>1. 평점 분포 히스토그램:</strong> 8.5점 이상 고평점 편향 확인 → 투표수 필터링 필요성 입증<br>
+                <strong>2. 장르×시대 히트맵:</strong> 코미디 감소 vs 다큐멘터리 급증 (19.8배) 트렌드<br>
+                <strong>3. 혼동행렬:</strong> 극단 등급(기타↔대성공) 구분 성공, 중간 등급 구분 실패<br>
+                <strong>4. 특성 중요도 차트:</strong> 시대 변수의 압도적 영향력 (특히 2020s)</p>
+            </div>
+
+            <div class="two-column">
+                <div>
+                    <h3>🌟 놀라운 발견사항</h3>
+                    
+                    <div class="feature-card">
+                        <h4>🚀 2020년대의 기적</h4>
+                        <p><strong>역대 최고 평점 시대:</strong><br>
+                        2020년대 영화들의 평균 평점이 역대 최고<br>
+                        코로나19 역설: 제작량은 줄었지만 품질은 상승<br>
+                        OTT 플랫폼의 영향으로 다양한 장르 확산</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>🎵 음악의 힘</h4>
+                        <p><strong>제작량 대비 최고 성공률:</strong><br>
+                        전체 영화의 1.2%만 차지하지만<br>
+                        8.0점 이상 비율 18.7% (평균의 4.7배)<br>
+                        전문성과 예술성이 인정받는 장르</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>📉 액션의 딜레마</h4>
+                        <p><strong>많이 만들어지지만 평점은 평범:</strong><br>
+                        전체 영화의 27.8%로 최대 비중<br>
+                        하지만 평균 평점 6.1점으로 하위권<br>
+                        상업성과 작품성의 트레이드오프</p>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3>📊 시대별 장르 생태계 변화</h3>
+                    
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>시대</th>
+                                <th>주요 특징</th>
+                                <th>대표 장르 변화</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>1980s</strong></td>
+                                <td>단순 명쾌</td>
+                                <td>코미디, 드라마 절대 우위</td>
+                            </tr>
+                            <tr>
+                                <td><strong>1990s</strong></td>
+                                <td>기술 발전</td>
+                                <td>액션 급부상, 특수효과</td>
+                            </tr>
+                            <tr>
+                                <td><strong>2000s</strong></td>
+                                <td>디지털 전환</td>
+                                <td>다큐멘터리 주목, 독립영화</td>
+                            </tr>
+                            <tr>
+                                <td><strong>2010s</strong></td>
+                                <td>플랫폼 혁신</td>
+                                <td>슈퍼히어로, OTT 영향</td>
+                            </tr>
+                            <tr>
+                                <td><strong>2020s</strong></td>
+                                <td>품질 혁명</td>
+                                <td>전문성 장르 급부상</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    
+                    <div class="feature-card">
+                        <h4>🎭 장르 다양성의 시대</h4>
+                        <p><strong>2010년대 이후 폭발적 증가:</strong><br>
+                        새로운 장르 조합들이 급격히 증가<br>
+                        Action-Comedy, Sci-Fi-Romance 등<br>
+                        관객의 다양한 취향 반영</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="three-column">
+                <div class="feature-card" style="border-left-color: #27ae60;">
+                    <h4>📈 긍정적 트렌드</h4>
+                    <p><strong>전체적 품질 향상:</strong><br>
+                    • 평균 평점 지속 상승<br>
+                    • 전문성 장르 성장<br>
+                    • 글로벌 수준 제작<br>
+                    • 다양성 확대</p>
+                </div>
+                
+                <div class="feature-card" style="border-left-color: #e74c3c;">
+                    <h4>⚠️ 우려사항</h4>
+                    <p><strong>예측 가능성 감소:</strong><br>
+                    • 성공 패턴 복잡화<br>
+                    • 전통적 공식 무효화<br>
+                    • 시장 세분화 심화<br>
+                    • 리스크 증가</p>
+                </div>
+                
+                <div class="feature-card" style="border-left-color: #3498db;">
+                    <h4>🔮 미래 전망</h4>
+                    <p><strong>지속적 변화 예상:</strong><br>
+                    • AI/VR 기술 도입<br>
+                    • 개인화 추천 강화<br>
+                    • 글로벌 동시 개봉<br>
+                    • 인터랙티브 콘텐츠</p>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <h4>🔍 데이터 분석의 한계 재확인</h4>
+                <p><strong>시각화로 명확해진 한계점:</strong><br>
+                • 같은 조건(장르+시대)에서도 평점 편차가 3-4점<br>
+                • 성공작과 실패작이 같은 카테고리에 혼재<br>
+                • 시각적으로도 명확한 패턴 부족 확인<br>
+                <strong>→ 추가 변수의 필요성을 시각적으로 입증</strong></p>
+            </div>
+        </div>
+
+        <!-- Slide 17: 프로젝트 성과 -->
+        <div class="slide">
+            <h1>🏆 프로젝트 성과</h1>
+            
+            <div class="highlight-box">
+                <h3>한계 속에서도 얻은 의미있는 성과들</h3>
+                <p>완벽한 예측은 아니지만, 기초적 이해와 방법론 확립</p>
+            </div>
+
+            <div class="analysis-grid">
+                <div>
+                    <h3>✅ 달성한 주요 성과들</h3>
+                    
+                    <div class="feature-card">
+                        <h4>🔧 기술적 성과</h4>
+                        <p><strong>완전 자동화 파이프라인:</strong> 데이터 → 전처리 → 분석 → 예측<br>
+                        <strong>체계적 코드 구조:</strong> 클래스 기반 모듈화, 재사용 가능<br>
+                        <strong>다양한 평가 지표:</strong> Balanced Accuracy, 혼동행렬 등<br>
+                        <strong>시각화 시스템:</strong> 직관적 결과 해석 도구</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>📊 분석적 성과</h4>
+                        <p><strong>시대별 트렌드 발견:</strong> 40년간 영화 산업 변화 추적<br>
+                        <strong>장르별 성공 패턴:</strong> 25개 장르의 상대적 특성 규명<br>
+                        <strong>기초적 예측 모델:</strong> 53% 수준의 분류 성능<br>
+                        <strong>실무 인사이트:</strong> 영화 기획 시 참고할 기본 가이드</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>🎓 학습적 성과</h4>
+                        <p><strong>전체 프로세스 경험:</strong> 문제 정의부터 결과 해석까지<br>
+                        <strong>도구 활용 역량:</strong> Python, scikit-learn, 시각화<br>
+                        <strong>문제 해결 사고:</strong> 클래스 불균형, 2단계 분류 등<br>
+                        <strong>비판적 사고:</strong> 모델 한계 인식과 개선 방향</p>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3>📈 정량적 성과 지표</h3>
+                    
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>성과 영역</th>
+                                <th>지표</th>
+                                <th>달성 수준</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>데이터 처리</strong></td>
+                                <td>45,466편 분석</td>
+                                <td>✅ 완료</td>
+                            </tr>
+                            <tr>
+                                <td><strong>모델 성능</strong></td>
+                                <td>Balanced Accuracy</td>
+                                <td>53% (제한적)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>대성공 검출</strong></td>
+                                <td>Recall</td>
+                                <td>84% (우수)</td>
+                            </tr>
+                            <tr>
+                                <td><strong>코드 품질</strong></td>
+                                <td>모듈화, 문서화</td>
+                                <td>✅ 완료</td>
+                            </tr>
+                            <tr>
+                                <td><strong>시각화</strong></td>
+                                <td>차트 및 그래프</td>
+                                <td>10+ 완료</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    
+                    <div class="feature-card" style="border-left-color: #f39c12;">
+                        <h4>⚖️ 성과의 현실적 평가</h4>
+                        <p><strong>실용성:</strong> 기초적 스크리닝 도구 수준<br>
+                        <strong>학술적 가치:</strong> 방법론과 한계 입증<br>
+                        <strong>교육적 가치:</strong> 완전한 ML 프로젝트 경험<br>
+                        <strong>개선 방향:</strong> 명확한 next step 제시</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="two-column">
+                <div>
+                    <h3>💼 제한적이지만 실용적인 가치</h3>
+                    
+                    <div class="feature-card">
+                        <h4>🎬 영화 기획 단계</h4>
+                        <p><strong>기초적 위험 신호:</strong><br>
+                        • "1980년대 + TV영화 + 로맨스" 조합 주의<br>
+                        • "2020년대 + 음악/다큐" 조합 긍정적<br>
+                        • 극단적 실패 가능성 사전 체크</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>💰 투자 의사결정</h4>
+                        <p><strong>1차 스크리닝 도구:</strong><br>
+                        • 명백한 고위험 조합 필터링<br>
+                        • 추가 분석 필요성 판단<br>
+                        • 객관적 데이터 기반 논의</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>📚 교육 및 연구</h4>
+                        <p><strong>방법론적 기여:</strong><br>
+                        • 영화 데이터 분석 파이프라인<br>
+                        • 클래스 불균형 해결 사례<br>
+                        • 한계 인식의 중요성 입증</p>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3>🔬 학술적/방법론적 기여</h3>
+                    
+                    <div class="feature-card">
+                        <h4>📖 연구 방법론</h4>
+                        <p><strong>체계적 접근:</strong><br>
+                        • 명확한 연구 질문 설정<br>
+                        • 단계별 검증 과정<br>
+                        • 한계 인식과 개선 방향 제시<br>
+                        • 재현 가능한 코드 작성</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>💡 인사이트 도출</h4>
+                        <p><strong>데이터 기반 발견:</strong><br>
+                        • 40년간 영화 산업 트렌드<br>
+                        • 장르별 성공 패턴 차이<br>
+                        • 시대 요인의 압도적 영향<br>
+                        • 예측 가능성의 한계</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>🎯 후속 연구 방향</h4>
+                        <p><strong>개선 로드맵:</strong><br>
+                        • 필요한 추가 변수 식별<br>
+                        • 데이터 수집 전략 수립<br>
+                        • 고급 모델링 기법 적용<br>
+                        • 실시간 예측 시스템 구축</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="highlight-box" style="background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);">
+                <h3>🎯 프로젝트의 진정한 가치</h3>
+                <p><strong>"완벽한 예측 모델보다는 체계적 접근과 한계 인식"</strong><br>
+                영화 성공 예측의 어려움을 과학적으로 입증하고,<br>
+                앞으로 필요한 연구 방향을 명확히 제시한 것이 핵심 성과</p>
+            </div>
+        </div>
+
+        <!-- Slide 18: 한계점 및 개선방안 -->
+        <div class="slide">
+            <h1>⚠️ 한계점 및 개선방안</h1>
+            
+            <div class="highlight-box">
+                <h3>솔직한 한계 인정과 구체적 개선 계획</h3>
+                <p>현재 연구의 부족함을 명확히 하고, 실현 가능한 발전 방향 제시</p>
+            </div>
+
+            <div class="analysis-grid">
+                <div>
+                    <h3>🚨 인정해야 할 주요 한계점</h3>
+                    
+                    <div class="feature-card" style="border-left-color: #e74c3c;">
+                        <h4>📊 데이터 한계</h4>
+                        <p><strong>1. 특성 부족:</strong> 장르 + 시대만으로는 설명력 한계<br>
+                        <strong>누락 정보:</strong> 감독, 배우, 제작비, 스튜디오, 마케팅<br>
+                        <strong>외부 요인:</strong> 개봉 시기, 경쟁작, 사회적 이슈<br>
+                        <strong>질적 요소:</strong> 스토리, 연출, 연기력 (측정 불가)</p>
+                    </div>
+                    
+                    <div class="feature-card" style="border-left-color: #e74c3c;">
+                        <h4>🎯 모델 한계</h4>
+                        <p><strong>1. 중간 등급 분류 실패:</strong><br>
+                        평범(6.5-7.5) vs 성공(7.5-8.0)의 모호한 경계<br>
+                        가장 중요한 구간에서 예측력 부족<br><br>
+                        <strong>2. 낮은 전체 성능:</strong><br>
+                        53% Balanced Accuracy = 동전 던지기 수준<br>
+                        실제 투자 의사결정에는 부족</p>
+                    </div>
+                    
+                    <div class="feature-card" style="border-left-color: #e74c3c;">
+                        <h4>📈 데이터 품질 이슈</h4>
+                        <p><strong>1. 평점 왜곡:</strong> 소수 투표로 인한 극단적 평점<br>
+                        <strong>2. 시대적 편향:</strong> 2000년대 이후 데이터 집중<br>
+                        <strong>3. 지역적 편향:</strong> 주로 서구 영화 중심<br>
+                        <strong>4. 클래스 불균형:</strong> 성공작의 절대적 희소성</p>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3>🔧 구체적 개선 방안</h3>
+                    
+                    <div class="feature-card">
+                        <h4>📅 1단계: 특성 확장 (3개월)</h4>
+                        <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; margin: 1rem 0; font-family: monospace; font-size: 0.9rem;">
+추가할 특성들:<br>
+├── 제작진: 감독별 평균 평점, 주연배우 등급<br>
+├── 제작 정보: 예산 규모, 제작 국가, 제작사<br>
+├── 마케팅: 개봉 규모, 개봉 시기(월별)<br>
+└── 경쟁 환경: 동시 개봉작, 시장 상황
+                        </div>
+                        <p><strong>예상 효과:</strong> 설명력 35% → 60% 향상 목표</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>🤖 2단계: 모델 고도화 (6개월)</h4>
+                        <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; margin: 1rem 0; font-family: monospace; font-size: 0.9rem;">
+고급 기법 적용:<br>
+├── 딥러닝: 신경망으로 복잡한 상호작용 학습<br>
+├── 앙상블: Voting, Stacking으로 성능 향상<br>
+├── 하이퍼파라미터 최적화: GridSearch, Optuna<br>
+└── 텍스트 분석: 줄거리, 리뷰 텍스트 활용
+                        </div>
+                        <p><strong>예상 효과:</strong> Balanced Accuracy 53% → 70% 목표</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>📊 3단계: 데이터 품질 개선 (지속적)</h4>
+                        <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; margin: 1rem 0; font-family: monospace; font-size: 0.9rem;">
+데이터 확장:<br>
+├── 외부 데이터 결합: IMDb, Rotten Tomatoes<br>
+├── 다양성 확보: 아시아, 유럽 영화 비중 증가<br>
+├── 실시간 업데이트: 최신 데이터 지속 반영<br>
+└── 품질 관리: 더 엄격한 필터링 기준
+                        </div>
+                        <p><strong>예상 효과:</strong> 데이터 신뢰성과 대표성 향상</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="two-column">
+                <div>
+                    <h3>💡 현실적 개선 우선순위</h3>
+                    
+                    <div class="feature-card">
+                        <h4>🥇 최우선 (즉시 가능)</h4>
+                        <p><strong>1. 감독/배우 데이터 추가</strong><br>
+                        IMDb에서 크롤링 가능<br>
+                        영향력이 클 것으로 예상<br><br>
+                        <strong>2. 제작비 정보 수집</strong><br>
+                        Box Office Mojo 활용<br>
+                        ROI 계산으로 성공 재정의</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>🥈 2순위 (3-6개월)</h4>
+                        <p><strong>1. 텍스트 분석 도입</strong><br>
+                        줄거리 NLP 분석<br>
+                        감정 분석, 키워드 추출<br><br>
+                        <strong>2. 고급 모델링</strong><br>
+                        Neural Network, XGBoost<br>
+                        앙상블 기법 적용</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>🥉 3순위 (장기적)</h4>
+                        <p><strong>1. 실시간 시스템 구축</strong><br>
+                        웹 서비스 개발<br>
+                        자동 업데이트 파이프라인<br><br>
+                        <strong>2. 외부 요인 통합</strong><br>
+                        경제 지표, 사회 트렌드<br>
+                        글로벌 이벤트 반영</p>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3>📋 구체적 실행 계획</h3>
+                    
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>기간</th>
+                                <th>목표</th>
+                                <th>주요 작업</th>
+                                <th>예상 성과</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>1개월</strong></td>
+                                <td>감독 데이터</td>
+                                <td>IMDb 크롤링</td>
+                                <td>+5% 성능</td>
+                            </tr>
+                            <tr>
+                                <td><strong>3개월</strong></td>
+                                <td>배우+제작비</td>
+                                <td>다중 소스 통합</td>
+                                <td>+10% 성능</td>
+                            </tr>
+                            <tr>
+                                <td><strong>6개월</strong></td>
+                                <td>고급 모델</td>
+                                <td>딥러닝 적용</td>
+                                <td>+15% 성능</td>
+                            </tr>
+                            <tr>
+                                <td><strong>1년</strong></td>
+                                <td>완전 시스템</td>
+                                <td>실시간 서비스</td>
+                                <td>실용화</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    
+                    <div class="feature-card" style="border-left-color: #27ae60;">
+                        <h4>💰 비용 대비 효과 분석</h4>
+                        <p><strong>낮은 비용, 높은 효과:</strong><br>
+                        • 감독/배우 데이터: 크롤링으로 무료<br>
+                        • 제작비 정보: 공개 데이터 활용<br>
+                        • 기존 코드 재사용: 추가 개발 최소화</p>
+                    </div>
+                    
+                    <div class="feature-card" style="border-left-color: #3498db;">
+                        <h4>🎯 현실적 목표 설정</h4>
+                        <p><strong>과도한 기대 금지:</strong><br>
+                        • 완벽한 예측은 불가능<br>
+                        • 70% 정확도도 충분히 유용<br>
+                        • 점진적 개선이 현실적</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="three-column">
+                <div class="feature-card" style="border-left-color: #e74c3c;">
+                    <h4>🚫 해결 불가능한 한계</h4>
+                    <p><strong>창작의 본질적 불확실성:</strong><br>
+                    • 예술적 영감의 비예측성<br>
+                    • 관객 반응의 변동성<br>
+                    • 외부 환경의 급변<br>
+                    • 문화적 트렌드의 유동성</p>
+                </div>
+                
+                <div class="feature-card" style="border-left-color: #f39c12;">
+                    <h4>⚖️ 개선 vs 현실의 균형</h4>
+                    <p><strong>실용적 목표 설정:</strong><br>
+                    • 100% 정확도는 불가능<br>
+                    • 70-80% 정도면 실용적<br>
+                    • 위험 신호 감지가 주목적<br>
+                    • 인간 판단의 보조 도구</p>
+                </div>
+                
+                <div class="feature-card" style="border-left-color: #27ae60;">
+                    <h4>✅ 달성 가능한 목표</h4>
+                    <p><strong>현실적 기대치:</strong><br>
+                    • 기초적 스크리닝 도구<br>
+                    • 명백한 위험 요소 탐지<br>
+                    • 트렌드 분석 및 인사이트<br>
+                    • 데이터 기반 토론 촉진</p>
+                </div>
+            </div>
+
+            <div class="highlight-box" style="background: linear-gradient(135deg, #e67e22 0%, #d35400 100%);">
+                <h3>🎯 개선의 핵심 철학</h3>
+                <p><strong>"완벽한 예측 모델이 아닌, 더 나은 의사결정 도구를 만드는 것"</strong><br>
+                영화 성공의 모든 요인을 예측하기보다는,<br>
+                명백한 위험 요소를 사전에 식별하고 기본적인 가이드라인을 제공하는 것이 현실적 목표</p>
+            </div>
+        </div>
+
+        <!-- Slide 19: 향후 발전 방향 -->
+        <div class="slide">
+            <h1>🚀 향후 발전 방향</h1>
+            
+            <div class="highlight-box">
+                <h3>현실적이고 실현 가능한 발전 로드맵</h3>
+                <p>한계를 인정하되, 점진적 개선을 통한 실용성 향상</p>
+            </div>
+
+            <div class="process-flow">
+                <div class="process-step">
+                    <h4>1</h4>
+                    <p>데이터 확장</p>
+                </div>
+                <div class="process-step">
+                    <h4>2</h4>
+                    <p>모델 고도화</p>
+                </div>
+                <div class="process-step">
+                    <h4>3</h4>
+                    <p>서비스화</p>
+                </div>
+                <div class="process-step">
+                    <h4>4</h4>
+                    <p>실무 적용</p>
+                </div>
+            </div>
+
+            <div class="analysis-grid">
+                <div>
+                    <h3>📊 Phase 1: 데이터 기반 확장 (0-6개월)</h3>
+                    
+                    <div class="feature-card">
+                        <h4>🎬 제작진 데이터 통합</h4>
+                        <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; margin: 1rem 0; font-family: monospace; font-size: 0.9rem;">
+감독/배우 특성 추가:<br>
+├── 감독별 평균 평점 및 흥행 이력<br>
+├── 주연배우 스타파워 지수<br>
+├── 제작진 조합별 시너지 효과<br>
+└── 과거 협업 성공 사례 분석
+                        </div>
+                        <p><strong>예상 효과:</strong> 설명력 35% → 50% 향상</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>💰 제작 환경 데이터</h4>
+                        <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; margin: 1rem 0; font-family: monospace; font-size: 0.9rem;">
+비즈니스 요소 반영:<br>
+├── 제작비 대비 수익(ROI) 예측<br>
+├── 제작 국가별 장르 강점 분석<br>
+├── 메이저/독립 제작사 성과 차이<br>
+└── 마케팅 예산과 성과 상관관계
+                        </div>
+                        <p><strong>데이터 소스:</strong> Box Office Mojo, The Numbers</p>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3>🤖 Phase 2: 고급 모델링 (6-12개월)</h3>
+                    
+                    <div class="feature-card">
+                        <h4>🧠 딥러닝 모델 도입</h4>
+                        <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; margin: 1rem 0; font-family: monospace; font-size: 0.9rem;">
+신경망 아키텍처:<br>
+├── Input: 확장된 특성 (100+ 차원)<br>
+├── Hidden: 복잡한 비선형 관계 학습<br>
+├── Attention: 중요 특성 자동 식별<br>
+└── Output: 확률 분포 + 신뢰도
+                        </div>
+                        <p><strong>목표:</strong> Balanced Accuracy 53% → 70%</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>📝 텍스트 분석 통합</h4>
+                        <div style="background: #f8f9fa; padding: 1rem; border-radius: 8px; margin: 1rem 0; font-family: monospace; font-size: 0.9rem;">
+NLP 기법 적용:<br>
+├── 줄거리 감정 분석 (긍정/부정/중립)<br>
+├── 장르별 핵심 키워드 추출<br>
+├── 스토리 구조 패턴 분석<br>
+└── 리뷰 텍스트 마이닝
+                        </div>
+                        <p><strong>기대:</strong> 스토리 품질 요소 일부 반영</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="two-column">
+                <div>
+                    <h3>🌐 Phase 3: 서비스화 (1-2년)</h3>
+                    
+                    <div class="feature-card">
+                        <h4>💻 웹 기반 예측 도구</h4>
+                        <p><strong>주요 기능:</strong><br>
+                        • 실시간 평점 예측<br>
+                        • 위험 요소 분석 리포트<br>
+                        • 장르 조합 추천<br>
+                        • 경쟁작 분석 대시보드</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>📱 사용자별 맞춤 인터페이스</h4>
+                        <p><strong>타겟 사용자:</strong><br>
+                        • 영화 기획자: 리스크 분석 중심<br>
+                        • 투자자: ROI 예측 중심<br>
+                        • 연구자: 데이터 탐색 중심<br>
+                        • 일반인: 간단한 예측 중심</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>🔄 실시간 업데이트 시스템</h4>
+                        <p><strong>자동화 파이프라인:</strong><br>
+                        • 새 영화 데이터 자동 수집<br>
+                        • 모델 성능 지속 모니터링<br>
+                        • 트렌드 변화 감지 알림<br>
+                        • 예측 정확도 피드백 루프</p>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3>💼 Phase 4: 실무 적용 (2년+)</h3>
+                    
+                    <div class="feature-card">
+                        <h4>🎯 영화 제작사 파일럿</h4>
+                        <p><strong>협업 프로젝트:</strong><br>
+                        • 실제 기획 단계에서 테스트<br>
+                        • 예측 결과와 실제 성과 비교<br>
+                        • 의사결정 과정에 미치는 영향 분석<br>
+                        • 투자 수익률 개선 효과 측정</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>🏫 교육 플랫폼 구축</h4>
+                        <p><strong>지식 전파:</strong><br>
+                        • 영화 제작 교육 커리큘럼<br>
+                        • 데이터 사이언스 케이스 스터디<br>
+                        • 업계 트렌드 리포트 자동 생성<br>
+                        • 학계-업계 연결 프로그램</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>🌍 글로벌 확장</h4>
+                        <p><strong>국제화 전략:</strong><br>
+                        • 국가별 문화적 특성 반영<br>
+                        • 다국어 데이터 처리<br>
+                        • 지역별 성공 요인 분석<br>
+                        • 글로벌 vs 로컬 성공 패턴 비교</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="three-column">
+                <div class="feature-card" style="border-left-color: #27ae60;">
+                    <h4>💡 혁신적 아이디어</h4>
+                    <p><strong>AI 시나리오 분석:</strong><br>
+                    • 줄거리 구조와 평점 상관관계<br>
+                    • 성공 스토리 패턴 추출<br>
+                    • 캐릭터 아크 분석<br>
+                    • 장면별 임팩트 측정</p>
+                </div>
+                
+                <div class="feature-card" style="border-left-color: #3498db;">
+                    <h4>📡 실시간 트렌드 예측</h4>
+                    <p><strong>환경 요인 통합:</strong><br>
+                    • 소셜미디어 버즈 분석<br>
+                    • 경제 상황과 장르 선호도<br>
+                    • 세대별 취향 변화 예측<br>
+                    • 글로벌 이벤트 영향 분석</p>
+                </div>
+                
+                <div class="feature-card" style="border-left-color: #9b59b6;">
+                    <h4>🎬 창작 지원 도구</h4>
+                    <p><strong>크리에이터 관점:</strong><br>
+                    • 스토리 아이디어 검증<br>
+                    • 캐스팅 조합 추천<br>
+                    • 최적 개봉 시기 예측<br>
+                    • 타겟 관객 분석</p>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <h4>📈 발전 로드맵 타임라인</h4>
+                <p><strong>0-6개월:</strong> 감독/배우 데이터 통합 → 성능 50% 달성<br>
+                <strong>6-12개월:</strong> 딥러닝 + 텍스트 분석 → 성능 70% 목표<br>
+                <strong>1-2년:</strong> 웹 서비스 구축 → 일반 사용자 접근 가능<br>
+                <strong>2년+:</strong> 실무 적용 및 글로벌 확장 → 업계 표준 도구</p>
+            </div>
+
+            <div class="highlight-box" style="background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);">
+                <h3>🎯 발전 방향의 핵심 철학</h3>
+                <p><strong>"완벽을 추구하되 현실을 인정하는 점진적 혁신"</strong><br>
+                영화 예측의 본질적 한계를 인정하면서도,<br>
+                실무에 도움이 되는 도구로 발전시키는 것이 궁극적 목표</p>
+            </div>
+        </div>
+
+        <!-- Slide 20: 결론 (1부) -->
+        <div class="slide">
+            <h1 style="font-size: 3rem; margin-bottom: 2rem;">🎬 결론 및 시사점 (1/2)</h1>
+            
+            <div class="highlight-box" style="margin: 2rem 0; padding: 2rem;">
+                <h3 style="font-size: 2rem;">🔑 핵심 연구 질문에 대한 솔직한 답변</h3>
+                <h2 style="font-size: 1.8rem; line-height: 1.4; color: rgba(255,255,255,0.95);">"장르와 개봉 시대만으로 영화의 성공을 예측할 수 있을까?"</h2>
+                <p style="font-size: 1.4rem; margin-top: 1rem;"><strong>→ 부분적으로만 가능하며, 실용적 한계가 명확함</strong></p>
+            </div>
+
+            <div class="analysis-grid" style="margin: 2rem 0;">
+                <div>
+                    <h3 style="font-size: 2rem; color: white; margin-bottom: 1.5rem;">✅ 달성한 성과</h3>
+                    
+                    <div class="feature-card">
+                        <h4>📊 기초적 예측 능력 확보</h4>
+                        <p><strong>53% Balanced Accuracy:</strong><br>
+                        동전 던지기(50%)보다는 나은 수준<br>
+                        극단적 성공/실패는 어느 정도 구분 가능<br>
+                        <em>기초적 스크리닝 도구로서의 가치</em></p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>🔍 영화 산업 인사이트 도출</h4>
+                        <p><strong>40년간 트렌드 분석:</strong><br>
+                        • 시대 요인이 장르보다 4배 중요<br>
+                        • 2020년대 = 역대 최고 평점 시대<br>
+                        • 전문성 장르 > 대중성 장르<br>
+                        • 예측 가능성의 본질적 한계 입증</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>🎓 방법론적 기여</h4>
+                        <p><strong>체계적 연구 과정:</strong><br>
+                        • 완전한 ML 파이프라인 구축<br>
+                        • 클래스 불균형 해결 방법론<br>
+                        • 한계 인식의 중요성 입증<br>
+                        • 재현 가능한 연구 설계</p>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3 style="font-size: 2rem; color: white; margin-bottom: 1.5rem;">⚠️ 명확한 한계점</h3>
+                    
+                    <div class="feature-card" style="border-left-color: #e74c3c;">
+                        <h4>🚨 근본적 예측 한계</h4>
+                        <p><strong>설명력 35% 수준:</strong><br>
+                        나머지 65%는 누락된 요인들<br>
+                        감독, 배우, 제작비, 스토리 품질 등<br>
+                        <em>창작의 본질적 불확실성</em></p>
+                    </div>
+                    
+                    <div class="feature-card" style="border-left-color: #e74c3c;">
+                        <h4>💼 실무 적용의 제약</h4>
+                        <p><strong>중간 등급 구분 실패:</strong><br>
+                        가장 중요한 투자 구간(평범 vs 성공)<br>
+                        에서 예측력 거의 없음<br>
+                        <em>실제 의사결정에는 추가 정보 필수</em></p>
+                    </div>
+                    
+                    <div class="feature-card" style="border-left-color: #f39c12;">
+                        <h4>📊 데이터 기반 분석의 한계</h4>
+                        <p><strong>측정 불가능한 요소들:</strong><br>
+                        • 예술적 영감과 창의성<br>
+                        • 관객과의 예상치 못한 공감대<br>
+                        • 문화적 임팩트와 시대정신<br>
+                        • 마케팅 창의성과 화제성</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="highlight-box" style="margin: 2rem 0; padding: 2rem; background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);">
+                <h3 style="font-size: 1.8rem;">🎯 중간 결론</h3>
+                <h2 style="font-size: 1.6rem; line-height: 1.4;">"완벽한 예측은 불가능하지만, 더 나은 이해는 가능하다"</h2>
+                <p style="font-size: 1.3rem; margin-top: 1rem;">
+                    이 연구는 영화 성공 예측의 어려움을 과학적으로 입증하고,<br>
+                    데이터 기반 접근의 가능성과 한계를 동시에 보여주었습니다.
+                </p>
+            </div>
+        </div>
+
+        <!-- Slide 21: 결론 (2부) - 활용방안 및 마무리 -->
+        <div class="slide">
+            <h1 style="font-size: 3rem; margin-bottom: 2rem;">🎬 결론 및 시사점 (2/2)</h1>
+
+            <div class="two-column" style="margin: 2rem 0;">
+                <div>
+                    <h3 style="font-size: 2rem; color: white; margin-bottom: 1.5rem;">💡 현실적 활용 방안</h3>
+                    
+                    <div class="feature-card">
+                        <h4>🎯 1차 스크리닝 도구</h4>
+                        <p><strong>명백한 위험 신호 감지:</strong><br>
+                        "1980년대 + TV영화 + 로맨스" 조합<br>
+                        → 높은 실패 가능성 경고<br>
+                        추가 분석 필요성 알림</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>📈 트렌드 분석 도구</h4>
+                        <p><strong>산업 변화 모니터링:</strong><br>
+                        장르별 성공률 변화 추적<br>
+                        새로운 패턴 조기 발견<br>
+                        전략적 기획 방향 설정</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>🎓 교육 및 연구 자료</h4>
+                        <p><strong>학습 목적:</strong><br>
+                        데이터 사이언스 케이스 스터디<br>
+                        영화 산업 이해 자료<br>
+                        예측 모델링 한계 교육</p>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3 style="font-size: 2rem; color: white; margin-bottom: 1.5rem;">🚀 발전 가능성</h3>
+                    
+                    <div class="feature-card">
+                        <h4>📊 단계적 개선 계획</h4>
+                        <p><strong>현실적 로드맵:</strong><br>
+                        1단계: 감독/배우 데이터 추가<br>
+                        2단계: 딥러닝 모델 적용<br>
+                        3단계: 실시간 서비스 구축</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>🎬 업계 파트너십</h4>
+                        <p><strong>실무 적용 테스트:</strong><br>
+                        제작사와 협업 프로젝트<br>
+                        실제 투자 의사결정 지원<br>
+                        예측 정확도 지속 개선</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>🌍 확장 가능성</h4>
+                        <p><strong>글로벌 적용:</strong><br>
+                        다양한 문화권 데이터<br>
+                        지역별 성공 요인 분석<br>
+                        국제 공동 연구 프로젝트</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="three-column" style="margin: 2rem 0;">
+                <div class="feature-card">
+                    <h4>🔬 학술적 기여</h4>
+                    <p><strong>영화 산업 데이터 분석</strong><br>
+                    체계적 방법론 제시<br>
+                    한계 인식의 중요성<br>
+                    후속 연구 방향 제시</p>
+                </div>
+                
+                <div class="feature-card">
+                    <h4>💼 실무적 가치</h4>
+                    <p><strong>기초적 의사결정 지원</strong><br>
+                    위험 요소 사전 식별<br>
+                    트렌드 기반 전략 수립<br>
+                    객관적 토론 기반 마련</p>
+                </div>
+                
+                <div class="feature-card">
+                    <h4>🌟 미래 비전</h4>
+                    <p><strong>지속적 발전 가능성</strong><br>
+                    점진적 성능 개선<br>
+                    실무 적용 확대<br>
+                    창작과 데이터의 조화</p>
+                </div>
+            </div>
+
+            <div class="highlight-box" style="margin: 2rem 0; padding: 2rem; background: linear-gradient(135deg, #27ae60 0%, #229954 100%);">
+                <h3 style="font-size: 1.8rem;">🎯 최종 메시지</h3>
+                <h2 style="font-size: 1.6rem; line-height: 1.4;">"완벽한 해답보다는 더 나은 질문을 찾는 여정"</h2>
+                <p style="font-size: 1.3rem; margin-top: 1rem;">
+                    이 프로젝트는 영화 성공 예측의 어려움을 입증하면서도,<br>
+                    데이터 기반 접근의 가능성을 보여주었습니다.<br>
+                    앞으로도 창의성과 과학이 만나는 지점을 탐구해 나가겠습니다.
+                </p>
+            </div>
+
+            <div style="text-align: center; margin-top: 3rem; padding: 2rem; background: rgba(255,255,255,0.1); border-radius: 15px;">
+                <h3 style="font-size: 1.6rem; margin-bottom: 1.5rem; color: black;">📞 010 - 5121 - 8090</h3>
+                <div style="display: flex; justify-content: center; gap: 4rem; flex-wrap: wrap; margin-bottom: 2rem;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 1.2rem;">
+                        <span>👤</span>
+                        <span>이 재 혁</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 1.2rem;">
+                        <span>📧</span>
+                        <span>dt5857@naver.com</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 1.2rem;">
+                        <span>🔗</span>
+                        <span>GitHub: https://github.com/Jaehyeok-Lee-pastel/</span>
+                    </div>
+                </div>
+                <p style="font-style: italic; font-size: 1.2rem; color: rgba(255,255,255,0.9);">
+                    "데이터와 창의성이 만나는 지점에서, 더 나은 영화의 미래를 함께 만들어갑시다" 🎬✨
+                </p>
+            </div>
+
+        <!-- Navigation -->
+        <div class="navigation">
+            <button class="nav-btn" id="prevBtn" onclick="changeSlide(-1)">◀ 이전</button>
+            <button class="nav-btn" id="nextBtn" onclick="changeSlide(1)">다음 ▶</button>
+        </div>
+    </div>
+
+    <script>
+        let currentSlideIndex = 0;
+        const slides = document.querySelectorAll('.slide');
+        const totalSlides = slides.length;
+        
+        document.getElementById('totalSlides').textContent = totalSlides;
+
+        function showSlide(index) {
+            slides.forEach(slide => slide.classList.remove('active'));
+            slides[index].classList.add('active');
+            
+            document.getElementById('currentSlide').textContent = index + 1;
+            document.getElementById('progressBar').style.width = ((index + 1) / totalSlides) * 100 + '%';
+            
+            // Update navigation buttons
+            document.getElementById('prevBtn').disabled = index === 0;
+            document.getElementById('nextBtn').disabled = index === totalSlides - 1;
+        }
+
+        function changeSlide(direction) {
+            const newIndex = currentSlideIndex + direction;
+            if (newIndex >= 0 && newIndex < totalSlides) {
+                currentSlideIndex = newIndex;
+                showSlide(currentSlideIndex);
+            }
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'ArrowLeft') {
+                changeSlide(-1);
+            } else if (e.key === 'ArrowRight') {
+                changeSlide(1);
+            } else if (e.key === 'Escape') {
+                // Toggle fullscreen
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen();
+                } else {
+                    document.exitFullscreen();
+                }
+            }
+        });
+
+        // Initialize
+        showSlide(0);
+
+        // Add click to advance slides
+        document.addEventListener('click', function(e) {
+            if (e.target.closest('.navigation')) {
+                return; // Don't advance on navigation clicks
+            }
+            
+            const rect = document.body.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            const centerX = rect.width / 2;
+            
+            if (clickX > centerX) {
+                changeSlide(1); // Click on right side = next slide
+            } else {
+                changeSlide(-1); // Click on left side = previous slide
+            }
+        });
+
+        // Touch/swipe support for mobile
+        let touchStartX = 0;
+        let touchEndX = 0;
+
+        document.addEventListener('touchstart', function(e) {
+            touchStartX = e.changedTouches[0].screenX;
+        });
+
+        document.addEventListener('touchend', function(e) {
+            touchEndX = e.changedTouches[0].screenX;
+            handleSwipe();
+        });
+
+        function handleSwipe() {
+            const swipeThreshold = 50;
+            const diff = touchStartX - touchEndX;
+            
+            if (Math.abs(diff) > swipeThreshold) {
+                if (diff > 0) {
+                    changeSlide(1); // Swipe left = next slide
+                } else {
+                    changeSlide(-1); // Swipe right = previous slide
+                }
+            }
+        }
+
+        // Auto-hide navigation on inactivity
+        let inactivityTimer;
+        const nav = document.querySelector('.navigation');
+        const counter = document.querySelector('.slide-counter');
+
+        function resetInactivityTimer() {
+            clearTimeout(inactivityTimer);
+            nav.style.opacity = '1';
+            counter.style.opacity = '1';
+            
+            inactivityTimer = setTimeout(() => {
+                nav.style.opacity = '0.3';
+                counter.style.opacity = '0.3';
+            }, 3000);
+        }
+
+        document.addEventListener('mousemove', resetInactivityTimer);
+        document.addEventListener('keydown', resetInactivityTimer);
+        resetInactivityTimer();
+    </script>
+</body>
+</html>
